@@ -7,30 +7,45 @@ char encode(int c, int add , int sign);
 int main(int argc, char *argv[]) {
     FILE *infile = stdin; 
     FILE *outfile = stdout;
-    char *eNums = NULL; 
+    char *key = NULL; 
     int debug = 1, digit = 0, c ,sign = 1; //default debug: on, default sign: +
 
 
     for(int i = 1; i<argc; i++){
         //----------part1
-        if(strcmp(argv[i], "-D") == 0 )
+        if(argv[i][0] =="-" && argv[i][1] == 'D' && argv[i][2] != 0 )
             debug = 0;
-        else if (strcmp(argv[i], "+D") == 0) 
+        else if (argv[i][0] =="+" && argv[i][1] == 'D' && argv[i][2] != 0) 
             debug = 1;
 
         //----------part2
         else if (argv[i][0] == '+' && argv[i][1] == 'E' && argv[i][2] != 0){
             sign = 1;
-            eNums = argv[i] + 2;
+            key = argv[i] + 2;
         }
 
         else if (argv[i][0] == '-' && argv[i][1] == 'E' && argv[i][2] != 0){
             sign = -1;
-            eNums = argv[i] + 2;
+            key = argv[i] + 2;
+        }
+
+        //----------part3
+        else if(argv[i][0] == '-' && argv[i][1] == 'i'&& argv[i][2] != 0){
+            infile = fopen(argv[i] + 2, "r"); ///read from the file
+            if (infile == NULL) { //if the file was't opened successfully
+                fprintf(stderr,"can't open this file \n");
+            }
+        }
+
+        else if(argv[i][0] == '-' && argv[i][1] == 'o'&& argv[i][2] != 0){
+            outfile = fopen(argv[i] + 2, "w"); ///read from the file
+            if (outfile == NULL) { //if the file was't opened successfully
+                fprintf(stderr,"can't open a file \n");
+            }
         }
 
         if(debug){
-            fprintf(stderr, i, argv[i]);
+            fprintf(stderr, "%s\n", argv[i]);
         }
 
         int counter = 0;
@@ -40,22 +55,22 @@ int main(int argc, char *argv[]) {
                 {
                     if (outfile == stdout && infile != stdin)
                         printf("\n");
-                    //exist "normally"
+                    //exist "normally" and close the files
                     fclose(infile);
                     fclose(outfile);
                     return 0;
                 }
-                 else if (eNums == NULL)
+                 else if (key == NULL)
                     fputc((char)c, outfile);
                 else
                 {
-                    fputc(encode((char)c, eNums[counter] - '0', sign), outfile);
-                    if (!eNums[++counter])
-                        i = 0;
+                    fputc(encode((char)c, key[counter] - '0', sign), outfile);
+                    if (!key[++counter])
+                        counter = 0;
                 }
             }
 
-             if (eNums != NULL && !eNums[++counter]) //incase I went out the while loop
+             if (key != NULL && !key[++counter]) //incase I went out the while loop
                 counter = 0; //reset the counter
 
             fputc('\n', outfile);
@@ -68,16 +83,13 @@ int main(int argc, char *argv[]) {
 }
 
 char encode(int c, int add , int sign){
-    int enc;
-
     if (c >= 'a' && c <= 'z')
-        enc = ((c -'a' + add*sign +26) %26) +'a' ;
+        c = ((c -'a' + add*sign +26) %26) +'a' ;
 
     else if(c >= 'A' && c <= 'Z')
-        enc =((c -'A' + add*sign) %26) +'A' ;
+        c =((c -'A' + add*sign) %26) +'A' ;
 
     else if (c >= '0' && c <= '9')
-        enc = ((c -'0' + add*sign +10) %10) +'0' ;
-
+        c = ((c -'0' + add*sign +10) %10) +'0' ;
     return c;
 }
