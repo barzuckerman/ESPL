@@ -1,1 +1,2 @@
-EncodeThis
+ABCDEZ
+12#<

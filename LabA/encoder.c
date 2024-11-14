@@ -49,60 +49,24 @@ int main(int argc, char *argv[]) {
     }
 
         int counter = 0;
-        while ((c = fgetc(infile)) != EOF) {
+        while ((c = fgetc(infile)) != EOF) { //until the end of the file
             if (key == NULL){
                 fputc(c, outfile);
             } 
             else{
                 fputc(encode(c, key[counter] - '0', sign), outfile);
-                counter = (key[++counter] == '\0') ? 0 : counter;  // Cycle through key
+                counter = (key[++counter] == '\0') ? 0 : counter;  // cycle through key numbers encoding
             }
 
-            // if (debug) {
-            //     fprintf(stderr, "%c", c);  // Debug: print each character read
-            //     }
         }
 
-    // Close files
+    // close files
     fclose(infile);
     fclose(outfile);
     return 0;
-        // while(1){
-        //     while ((c = fgetc(infile)) != '\n') { //end of the line
-        //         if ((c = fgetc(infile)) != EOF) //end of the file
-        //         {
-        //             //FIXME:
-        //             // if (outfile == stdout && infile != stdin)
-        //             //     fprintf(stderr,"\n"); 
-        //             //exist "normally" and close the 
-        //             fclose(infile);
-        //             fclose(outfile);
-        //             return 0;
-        //         }
-        //          else if (key == NULL){
-        //             fputc((char)c, outfile);
-        //          }
-                    
-        //         else
-        //         {
-        //             fputc(encode((char)c, key[counter] - '0', sign), outfile);
-        //             if (!key[++counter])
-        //                 counter = 0;
-        //         }
-        //     }
-
-        //   if (key != NULL && !key[++counter]) //incase i need the cycle of the key i reset the counter
-        //     counter = 0; //reset the counter 
-
-        //     fputc('\n', outfile);
-        // }
-        
-        
-    // }
-
-    // return 0; 
 }
 
+/*encode function using mod in order to create cycling pattern*/
 char encode(int c, int add , int sign){
     if (c >= 'a' && c <= 'z')
         c = ((c -'a' + add*sign +26) %26) +'a' ;
