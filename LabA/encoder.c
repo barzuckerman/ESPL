@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        if (debug) {
+        if (debug && argv[i][1] != 'D') {
             fprintf(stderr, "%s\n", argv[i]);
         }
     }
