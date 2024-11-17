@@ -53,12 +53,37 @@ int secondary(int x)
     printf("Arrays Mem Layout (T1b):\n");
 
     /* task 1 b here */
+
+    printf("- &addr of iarray: %p\n", iarray);
+    printf("- &addr of iarray+1: %p\n", iarray+1);
+
+    printf("- &addr of farray: %p\n", farray);
+    printf("- &addr of farray+1: %p\n", farray+1);
+
+    printf("- &addr of darray: %p\n", darray);
+    printf("- &addr of darray+1: %p\n", darray+1);
+
+    printf("- &addr of carray: %p\n", carray);
+    printf("- &addr of carray+1: %p\n", carray+1);
     
     printf("Pointers and arrays (T1d): ");
 
     /* task 1 d here */
-    
+    iarray2Ptr = iarray2;
+    carray2Ptr = carray2;
 
+    printf("iarray2:\n");
+    for (int i = 0; i < 3; i++) {
+        printf("iarray2[%d]: %d\n", i, *(iarray2Ptr + i));
+    }
+
+    printf("carray2:\n");
+    for (int i = 0; i < 3; i++) {
+        printf("carray2[%d]: %c\n", i, *(carray2Ptr + i));
+    }
+
+    int* p;
+    printf("- &addr of carray: %p\n", p);
 }
 
 int main(int argc, char **argv)
@@ -75,23 +100,8 @@ int main(int argc, char **argv)
     printf("Command line arg addresses (T1e):\n");
     /* task 1 e here */
     
-  //---------------part T1b----------------
-  int iarray[3];
-  float farray[3];
-  double darray[3];
-  char carray[3];
 
-  printf("- &addr of iarray: %p\n", iarray);
-  printf("- &addr of iarray+1: %p\n", iarray+1);
-
-  printf("- &addr of farray: %p\n", farray);
-  printf("- &addr of farray+1: %p\n", farray+1);
-
-  printf("- &addr of darray: %p\n", darray);
-  printf("- &addr of darray+1: %p\n", darray+1);
-
-  printf("- &addr of carray: %p\n", carray);
-  printf("- &addr of carray+1: %p\n", carray+1);
+  
     return 0;
 }
 
