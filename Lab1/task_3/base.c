@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <string.h>
 
-int menu();
 char my_get(char c);
 char cprt(char c);
 char encrypt(char c);
@@ -69,5 +68,4 @@ int main(int argc, char **argv){
   // free(arr3);
   // free(arr4);
   // free(arr5);
-  return menu();
 }
