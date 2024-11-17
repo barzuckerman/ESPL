@@ -74,16 +74,16 @@ int secondary(int x)
 
     printf("iarray2:\n");
     for (int i = 0; i < 3; i++) {
-        printf("iarray2[%d]: %d\n", i, *(iarray2Ptr + i));
+        printf("elemnt %d: %d\n", i, *(iarray2Ptr + i));
     }
 
     printf("carray2:\n");
     for (int i = 0; i < 3; i++) {
-        printf("carray2[%d]: %c\n", i, *(carray2Ptr + i));
+        printf("elemnt %d: %c\n", i, *(carray2Ptr + i));
     }
 
     int* p;
-    printf("- &addr of carray: %p\n", p);
+    printf("- &addr of pointer p: %p\n", p);
 }
 
 int main(int argc, char **argv)
@@ -99,7 +99,11 @@ int main(int argc, char **argv)
     
     printf("Command line arg addresses (T1e):\n");
     /* task 1 e here */
-    
+    printf("argv:\n");
+    for (int i = 0; i < argc; i++) {
+        printf("address %d: %p\n", i, (void*)(argv + i));
+        printf("elemnt %d: %s\n", i, *(argv + i));
+    }
 
   
     return 0;
@@ -121,6 +125,7 @@ void point_at(void *p)
     
     printf("Check long type mem size (T1a):\n");
     /* part of task 1 a here */
+    printf("long data size: %zu bytes\n", sizeof(long));
 
     printf("- addr0: %p\n", &addr0);
     printf("- addr1: %p\n", &addr1);
