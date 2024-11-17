@@ -76,22 +76,22 @@ int main(int argc, char **argv)
     /* task 1 e here */
     
   //---------------part T1b----------------
-    int iarray[3];
+  int iarray[3];
   float farray[3];
   double darray[3];
   char carray[3];
 
-  printf("- &addr of iarray: %p\n", &iarray);
-  printf("- &addr of iarray+1: %p\n", &iarray+1);
+  printf("- &addr of iarray: %p\n", iarray);
+  printf("- &addr of iarray+1: %p\n", iarray+1);
 
-  printf("- &addr of farray: %p\n", &farray);
-  printf("- &addr of farray+1: %p\n", &farray+1);
+  printf("- &addr of farray: %p\n", farray);
+  printf("- &addr of farray+1: %p\n", farray+1);
 
-  printf("- &addr of darray: %p\n", &darray);
-  printf("- &addr of darray+1: %p\n", &darray+1);
+  printf("- &addr of darray: %p\n", darray);
+  printf("- &addr of darray+1: %p\n", darray+1);
 
-  printf("- &addr of carray: %p\n", &carray);
-  printf("- &addr of carray+1: %p\n", &carray+1);
+  printf("- &addr of carray: %p\n", carray);
+  printf("- &addr of carray+1: %p\n", carray+1);
     return 0;
 }
 
