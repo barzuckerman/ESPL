@@ -101,7 +101,7 @@ int main(int argc, char **argv)
     /* task 1 e here */
     printf("argv:\n");
     for (int i = 0; i < argc; i++) {
-        printf("address %d: %p\n", i, (void*)(argv + i));
+        printf("address %d: %p\n", i, (void*)(argv + i)); //cast pointers to void* when using %p
         printf("elemnt %d: %s\n", i, *(argv + i));
     }
 
