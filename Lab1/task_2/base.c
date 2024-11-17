@@ -14,7 +14,7 @@ char* map(char *array, int array_length, char (*f) (char)){
   char* mapped_array = (char*)(malloc(array_length*sizeof(char)));
   /* TODO: Complete during task 2.a */
   for(int i = 0 ; i<array_length ; i++){
-    mapped_array[i] = f(array[i]);
+    mapped_array[i] = (*f)(array[i]);
   }
   return mapped_array;
 }
@@ -28,19 +28,19 @@ char cprt(char c){
   if( c>=0x20 && c<=0x7E)
     printf("%c in ASCII: %i\n", c, c);
   else
-    printf(".");
+    printf(".\n");
   return c;
 }
 /* Gets a char c and returns its encrypted form by adding 1 to its value. If c is not between 0x1F and 0x7E it is returned unchanged */
 char encrypt(char c){
   if( c>=0x1F && c<=0x7E)
-    c = c + 1;
+    c++;
   return c;
 }
 /* Gets a char c and returns its decrypted form by reducing 1 from its value. If c is not between 0x21 and 0x7F it is returned unchanged */
 char decrypt(char c){
   if( c>=0x21 && c<=0x7F)
-    c = c - 1;
+    c--;
   return c;
 }
 
@@ -58,14 +58,14 @@ char dprt(char c){
 
 int main(int argc, char **argv){
   /* TODO: Test your code */
-  // int base_len = 5;
-  // char arr1[base_len];
-  // char* arr2 = map(arr1, base_len, my_get);
-  // char* arr3 = map(arr2, base_len, dprt);
-  // char* arr4 = map(arr3, base_len, xprt);
-  // char* arr5 = map(arr4, base_len, encrypt);
-  // free(arr2);
-  // free(arr3);
-  // free(arr4);
-  // free(arr5);
+  int base_len = 5;
+  char arr1[base_len];
+  char* arr2 = map(arr1, base_len, my_get);
+  char* arr3 = map(arr2, base_len, dprt);
+  char* arr4 = map(arr3, base_len, xprt);
+  char* arr5 = map(arr4, base_len, encrypt);
+  free(arr2);
+  free(arr3);
+  free(arr4);
+  free(arr5);
 }

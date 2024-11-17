@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-//#define MAX_LEN 20000;
+#define MAX_LEN 5
 
 typedef struct fun_desc {
 char *name;
@@ -27,19 +27,19 @@ char cprt(char c){
   if( c>=0x20 && c<=0x7E)
     printf("%c in ASCII: %i\n", c, c);
   else
-    printf(".");
+    printf(".\n");
   return c;
 }
 /* Gets a char c and returns its encrypted form by adding 1 to its value. If c is not between 0x1F and 0x7E it is returned unchanged */
 char encrypt(char c){
   if( c>=0x1F && c<=0x7E)
-    c = c + 1;
+    c++;
   return c;
 }
 /* Gets a char c and returns its decrypted form by reducing 1 from its value. If c is not between 0x21 and 0x7F it is returned unchanged */
 char decrypt(char c){
   if( c>=0x21 && c<=0x7F)
-    c = c - 1;
+    c--;
   return c;
 }
 
@@ -56,31 +56,28 @@ char dprt(char c){
 }
 
 int menu(){
-    char carray [5] = {'\0'};
-    char input[5];
+    char carray [MAX_LEN] = {'\0'};
+    char input[MAX_LEN];
     FunDesc arr[] = {{"my_get", my_get},{"cprt", cprt},{"encrypt", encrypt},{"decrypt", decrypt},{"xprt", xprt},{"dprt", dprt},{NULL, NULL}};
     int bound = sizeof(arr) / sizeof(arr[0])-1;
-    fprintf(stdout,"Select operation from the following menu:\n");
-    while(!feof(stdin)){
-        
-        int i = 0;
-        int num_input = 0;
 
+    while(!feof(stdin)){
+
+        fprintf(stdout,"Select operation from the following menu:\n");
+        int num_input = 0;
         //printing the menu
+        int i = 0;
         while (arr[i].name != NULL) {
             fprintf(stdout,"%d. %s\n", i , arr[i].name);
             i++;
         }
 
         fprintf(stdout,"option number: ");
-        
         if (fgets(input, sizeof(input), stdin) == NULL) { //read the number
             return 0;
         }
-        
         input[strcspn(input, "\n")] = '\0'; //remove the last char of the empty char
-        num_input = strtol(input, NULL, 100); //convert to int
-
+        num_input = strtol(input, NULL, 10); //convert to int
         if(num_input < 0 || num_input >= bound){ //check the number is ok
             printf("Not within bounds\n");
             return 0;
@@ -89,8 +86,12 @@ int menu(){
         printf("Within bounds\n");
 
         char *curr = map(carray, sizeof(carray), arr[num_input].fun); //alocate a dynamic var
+        
+        
         if(curr !=NULL){
-            memcpy(carray, curr, 5);
+            memcpy(carray, curr, sizeof(carray));
+            //  for(int j =0; j <sizeof(carray); j++)//FIXME:
+            //     printf("carray %d: %c\n",j, carray[j]);//FIXME:
             free(curr);
         }
 
