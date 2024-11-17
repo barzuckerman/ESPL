@@ -1,12 +1,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+
+int menu();
 char my_get(char c);
 char cprt(char c);
 char encrypt(char c);
 char decrypt(char c);
 char xprt(char c);
 char dprt(char c);
+char* map(char *array, int array_length, char (*f) (char));
 
 char* map(char *array, int array_length, char (*f) (char)){
   char* mapped_array = (char*)(malloc(array_length*sizeof(char)));
@@ -56,14 +59,15 @@ char dprt(char c){
 
 int main(int argc, char **argv){
   /* TODO: Test your code */
-  int base_len = 5;
-  char arr1[base_len];
-  char* arr2 = map(arr1, base_len, my_get);
-  char* arr3 = map(arr2, base_len, dprt);
-  char* arr4 = map(arr3, base_len, xprt);
-  char* arr5 = map(arr4, base_len, encrypt);
-  free(arr2);
-  free(arr3);
-  free(arr4);
-  free(arr5);
+  // int base_len = 5;
+  // char arr1[base_len];
+  // char* arr2 = map(arr1, base_len, my_get);
+  // char* arr3 = map(arr2, base_len, dprt);
+  // char* arr4 = map(arr3, base_len, xprt);
+  // char* arr5 = map(arr4, base_len, encrypt);
+  // free(arr2);
+  // free(arr3);
+  // free(arr4);
+  // free(arr5);
+  return menu();
 }
