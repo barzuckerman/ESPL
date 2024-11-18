@@ -90,8 +90,6 @@ int menu(){
         
         if(curr !=NULL){
             memcpy(carray, curr, sizeof(carray));
-            //  for(int j =0; j <sizeof(carray); j++)//FIXME:
-            //     printf("carray %d: %c\n",j, carray[j]);//FIXME:
             free(curr);
         }
 

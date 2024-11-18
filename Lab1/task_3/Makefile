@@ -1,10 +1,9 @@
 all : task3
 
-task3 : menu.o
-	gcc -g -m32 -Wall -o task3 menu.o
-
-menu.o : menu.c
-	gcc -g -m32 -Wall -c -o menu.o menu.c
+task3 : menu_map.o
+	gcc -g -m32 -Wall -o task3 menu_map.o
+menu.o : menu_map.c
+	gcc -g -m32 -Wall -c -o menu_map.o menu_map.c
 
 .PHONY : clean
 clean :
