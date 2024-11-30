@@ -3,6 +3,7 @@
         "malloc.h": "c",
         "stdlib.h": "c",
         "wait.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "cstdlib": "c"
     }
 }
