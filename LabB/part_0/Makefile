@@ -1,11 +1,11 @@
-all : part0
+all : hexaPrint
 
-part0 : Bubblesort.o
-	gcc -g -m32 -Wall -o part0 Bubblesort.o
+hexaPrint : hexaPrint.o
+	gcc -g -m32 -Wall -o hexaPrint hexaPrint.o
 
-Bubblesort.o : Bubblesort.c
-	gcc -g -m32 -Wall -c -o Bubblesort.o Bubblesort.c
+hexaPrint.o : hexaPrint.c
+	gcc -g -m32 -Wall -c -o hexaPrint.o hexaPrint.c
 
 .PHONY : clean
 clean :
-	rm -f *.o part0
+	rm -f *.o hexaPrint
