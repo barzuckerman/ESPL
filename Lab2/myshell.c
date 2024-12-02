@@ -17,9 +17,15 @@ void execute(cmdLine *pCmdLine);
 int toInt (char *str);
 int debug = 0;
 
-int main() {
+int main(int argc, char **argv) {
     char cwd[PATH_MAX];
     char input[2048];
+    if(strcmp(argv[1], "-d") == 0){
+        debug = 1;
+    }
+    else if(strcmp(argv[1], "+d") == 0){
+        debug = 0;
+    }
     while (1){
         if (getcwd(cwd, sizeof(cwd)) != NULL) {
             printf("Current working directory: %s\n", cwd);
@@ -27,12 +33,6 @@ int main() {
                cmdLine* pcmdl = parseCmdLines(input);
                if(strcmp(pcmdl->arguments[0], "quit") == 0){
                     return 0;
-               }
-               else if(strcmp(pcmdl->arguments[0], "-d") == 0){
-                    debug = 1;
-               }
-               else if(strcmp(pcmdl->arguments[0], "+d") == 0){
-                    debug = 0;
                }
                else if(strcmp(pcmdl->arguments[0], "cd") == 0){ 
                 //-----------------Task 1b-------------------
@@ -87,20 +87,20 @@ int main() {
 
  void execute(cmdLine *pCmdLine){
     pid_t pid = fork(); // duplicate current process
-    
+    if (pid < 0){
+        perror("fork failed");
+    }
     
     if (pid == 0){
-        //-----------------Task 1a-------------------
-        if (debug){ 
-        fprintf(stderr,"PID: %d\n",pid);
-        fprintf(stderr,"Executing command: %s\n",pCmdLine->arguments[0]);
-        }
+        
         //-----------------Task 3-------------------
+        
         if (pCmdLine->inputRedirect != NULL) { 
             int fileOpen = open(pCmdLine->inputRedirect, O_RDONLY | O_CREAT, 0777); //0777 -> for everyone
             if (fileOpen == -1) {
                 _exit(EXIT_FAILURE);
             }
+            dup2(fileOpen, STDIN_FILENO);
             close(fileOpen); 
         }
 
@@ -109,16 +109,19 @@ int main() {
             if (fileOut == -1) {
                 _exit(EXIT_FAILURE);
             }
+            dup2(fileOut, STDOUT_FILENO);
             close(fileOut);
         }
         execvp(pCmdLine->arguments[0], pCmdLine->arguments);
         perror("execv failed");
         _exit(EXIT_FAILURE);
     }
-    else if (pid < 0){
-        perror("fork failed");
-    }
     else{
+        //-----------------Task 1a-------------------
+        if (debug){ 
+            fprintf(stderr,"PID: %d\n",pid);
+            fprintf(stderr,"Executing command: %s\n",pCmdLine->arguments[0]);
+        }
         if (pCmdLine->blocking){
             waitpid(pid, NULL, 0);
         }
