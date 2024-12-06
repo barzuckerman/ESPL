@@ -9,20 +9,35 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <errno.h>
-
 #include "LineParser.h"
 
+#define TERMINATED -1
+#define RUNNING 1
+#define SUSPENDED 0
+//------------struct declaration------------
+typedef struct process
+{
+    cmdLine *cmd;         // the parsed command line
+    pid_t pid;            // the process id that is running the command
+    int status;           // status of the process: RUNNING/SUSPENDED/TERMINATED
+    struct process *next; // next process in chain
+} process;
+//------------functions declaration------------
 void execute(cmdLine *pCmdLine);
 int toInt(char *str);
 void executePipeline(cmdLine *pcmd1, cmdLine *pcmd2);
-
+void addProcess(process **process_list, cmdLine *cmd, pid_t pid);
+void printProcessList(process **process_list);
+//------------global------------
 int debug = 0;
+process *processLinkList;
 
 int main(int argc, char **argv)
 {
     char cwd[PATH_MAX];
     char input[2048];
-    if (argc > 1) { // Check if an argument is passed to prevent segmentation faults
+    if (argc > 1)
+    { // Check if an argument is passed to prevent segmentation faults
         if (strcmp(argv[1], "-d") == 0)
             debug = 1;
         else if (strcmp(argv[1], "+d") == 0)
@@ -206,11 +221,11 @@ void executePipeline(cmdLine *pcmd1, cmdLine *pcmd2)
             dup2(inputFile, STDIN_FILENO);
             close(inputFile);
         }
-        
-        close(STDOUT_FILENO); // close standart output
-        dup(pipeFileDescriptors[1]); // dup write end
-        close(pipeFileDescriptors[0]); // Close read end
-        close(pipeFileDescriptors[1]); // Close write end after duplicating
+
+        close(STDOUT_FILENO);                          // close standart output
+        dup(pipeFileDescriptors[1]);                   // dup write end
+        close(pipeFileDescriptors[0]);                 // Close read end
+        close(pipeFileDescriptors[1]);                 // Close write end after duplicating
         execvp(pcmd1->arguments[0], pcmd1->arguments); // execute first command
         perror("execv failed");
         // exit(EXIT_SUCCESS);
@@ -224,9 +239,11 @@ void executePipeline(cmdLine *pcmd1, cmdLine *pcmd2)
     }
     else if (child2 == 0)
     {
-        if (pcmd2->outputRedirect != NULL) {
+        if (pcmd2->outputRedirect != NULL)
+        {
             int outputFile = open(pcmd2->outputRedirect, O_WRONLY | O_CREAT | O_TRUNC, 0777);
-            if (outputFile == -1) {
+            if (outputFile == -1)
+            {
                 perror("Failed to open output file");
                 exit(EXIT_FAILURE);
             }
@@ -234,17 +251,32 @@ void executePipeline(cmdLine *pcmd1, cmdLine *pcmd2)
             close(outputFile);
         }
 
-        close(STDIN_FILENO);  // close standart input
-        dup(pipeFileDescriptors[0]); // dup read end
-        close(pipeFileDescriptors[1]); // Close write end
-        close(pipeFileDescriptors[0]); // Close read end after duplicating
-        execvp(pcmd2->arguments[0], pcmd2->arguments);  // execute seconed command
+        close(STDIN_FILENO);                           // close standart input
+        dup(pipeFileDescriptors[0]);                   // dup read end
+        close(pipeFileDescriptors[1]);                 // Close write end
+        close(pipeFileDescriptors[0]);                 // Close read end after duplicating
+        execvp(pcmd2->arguments[0], pcmd2->arguments); // execute seconed command
         perror("execv failed");
         // exit(EXIT_SUCCESS);
     }
-    //parent
+    // parent
     close(pipeFileDescriptors[0]);
     close(pipeFileDescriptors[1]);
     waitpid(child1, NULL, 0);
     waitpid(child2, NULL, 0);
+}
+/*Receive a process list (process_list), a command (cmd), and the process id (pid) of the process running the command.
+Note that process_list is a pointer to a pointer so that we can insert at the beginning of the list if we wish*/
+void addProcess(process **process_list, cmdLine *cmd, pid_t pid)
+{
+    process *new_process = (process *)malloc(sizeof(process));
+    new_process->cmd = cmd;
+    new_process->pid = pid;
+    new_process->next = process_list;
+    processLinkList = new_process;
+}
+
+/*print the processes.*/
+void printProcessList(process **process_list)
+{
 }

@@ -55,7 +55,7 @@ int main(int argc, char **argv)
 {
     char input[MAX_LEN];
     FunDesc arr[] = {{"Load signatures", loadSigatures}, {"Print signatures", printSigatures}, {"Detect viruses", detectViruses}, {"Fix file", fixFile}, {"Quit", quit}, {NULL, NULL}};
-    int bound = sizeof(arr) / sizeof(arr[0]) - 1;
+    int bound = sizeof(arr) / sizeof(arr[0]) ;
 
     while (!feof(stdin))
     {
@@ -73,22 +73,25 @@ int main(int argc, char **argv)
         fprintf(stdout, "option number: ");
         if (fgets(input, sizeof(input), stdin) == NULL)
         { // read the number
+            quit();
             return 0;
         }
         input[strcspn(input, "\n")] = '\0'; // remove the last char of the empty char
         if (sscanf(input, "%d", &num_input) != 1)
         {
+            quit();
             return 0; // If sscanf fails to parse an integer, exit
         } // convert to int
         if (num_input < 0 || num_input >= bound)
         { // check the number is ok
-            printf("Not within bounds\n");
-            return 0;
+            printf("not in bounds\n");
+        }
+        else{
+            arr[num_input - 1].fun();
+            printf("DONE.\n");
         }
 
-        arr[num_input - 1].fun();
-
-        printf("DONE.\n");
+        
     }
     return 0;
 }
@@ -216,24 +219,18 @@ link *list_append(link *virus_list, virus *data)
 }
 
 // Free the memory allocated by the list.
-void list_free(link *virus_list)
-{
-    while (virus_list->nextVirus != NULL)
-    {
-        link *temp = virus_list;
-        // free the virus data
-        if (virus_list->vir->sig)
-        {
+void list_free(link *virus_list) {
+    while (virus_list != NULL) {
+        link *next = virus_list->nextVirus;
+        if (virus_list->vir->sig != NULL) {
             free(virus_list->vir->sig);
         }
         free(virus_list->vir);
-        // free the virus link
-        virus_list = virus_list->nextVirus;
-        free(temp);
+        free(virus_list);
+        virus_list = next;
     }
-    free(virus_list->vir);
-    free(virus_list);
 }
+
 
 void loadSigatures()
 {
@@ -386,10 +383,17 @@ void neutralize_virus(char *fileName, int signatureOffset){
     fclose(fileToRead);
 }
 
-void quit()
-{
-    list_free(sigLinkList);
-    sigLinkList = NULL;
-    fclose(file);
+void quit() {
+    if (sigLinkList != NULL) {
+        list_free(sigLinkList);
+        sigLinkList = NULL;
+    }
+    
+    if (file != NULL) { // Ensure the file is open before attempting to close
+        fclose(file);
+        file = NULL; // Set file to NULL to prevent double closure
+    }
+    
     exit(0);
 }
+
