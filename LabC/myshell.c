@@ -28,9 +28,12 @@ int toInt(char *str);
 void executePipeline(cmdLine *pcmd1, cmdLine *pcmd2);
 void addProcess(process **process_list, cmdLine *cmd, pid_t pid);
 void printProcessList(process **process_list);
+void freeProcessList(process* process_list);
+void updateProcessList(process **process_list);
 //------------global------------
 int debug = 0;
-process *processLinkList;
+process *process_list;
+
 
 int main(int argc, char **argv)
 {
@@ -57,7 +60,6 @@ int main(int argc, char **argv)
                 }
                 else if (strcmp(pcmdl->arguments[0], "cd") == 0)
                 {
-                    //-----------------Task 1b-------------------
                     if (chdir(pcmdl->arguments[1]) == -1)
                     {
                         if (errno == ENOENT)
@@ -109,6 +111,10 @@ int main(int argc, char **argv)
                         int pid = toInt(pcmdl->arguments[1]);
                         kill(pid, SIGINT);
                     }
+                }
+                else if (strcmp(pcmdl->arguments[0], "procs") == 0)
+                {
+                    printProcessList(process_list);
                 }
                 else
                 {
@@ -170,12 +176,14 @@ void execute(cmdLine *pCmdLine)
         }
         else
         {
-            //-----------------Task 1a-------------------
             if (debug)
             {
                 fprintf(stderr, "PID: %d\n", pid);
                 fprintf(stderr, "Executing command: %s\n", pCmdLine->arguments[0]);
             }
+
+            addProcess(&process_list, pCmdLine, pid);
+
             if (pCmdLine->blocking)
             {
                 waitpid(pid, NULL, 0);
@@ -230,7 +238,10 @@ void executePipeline(cmdLine *pcmd1, cmdLine *pcmd2)
         perror("execv failed");
         // exit(EXIT_SUCCESS);
     }
-
+    else{
+        addProcess(&process_list, pcmd1, child1);
+    }
+    
     child2 = fork();
     if (child2 == -1)
     {
@@ -259,7 +270,10 @@ void executePipeline(cmdLine *pcmd1, cmdLine *pcmd2)
         perror("execv failed");
         // exit(EXIT_SUCCESS);
     }
-    // parent
+    else{    // parent
+        addProcess(&process_list, pcmd2, child2);
+    }
+
     close(pipeFileDescriptors[0]);
     close(pipeFileDescriptors[1]);
     waitpid(child1, NULL, 0);
@@ -270,13 +284,106 @@ Note that process_list is a pointer to a pointer so that we can insert at the be
 void addProcess(process **process_list, cmdLine *cmd, pid_t pid)
 {
     process *new_process = (process *)malloc(sizeof(process));
+    if (!new_process)
+    {
+        perror("Failed to allocate memory for new process node");
+        exit(EXIT_FAILURE);
+    }
     new_process->cmd = cmd;
     new_process->pid = pid;
-    new_process->next = process_list;
-    processLinkList = new_process;
+    new_process->status = RUNNING; // Assuming new processes are initially running
+    new_process->next = *process_list;
+    *process_list = new_process;
 }
 
 /*print the processes.*/
 void printProcessList(process **process_list)
 {
+    updateProcessList(process_list);
+    process *curr = *process_list;
+    int count = 1;
+    printf("Index\t\tPID\t\tCommand\t\tSTATUS\n");
+    while (curr != NULL)
+    {
+        // Print each process
+        printf("%d\t\t%d\t\t%s\t\t", count++, curr->pid, curr->cmd->arguments[0]);
+        switch (curr->status)
+        {
+        case TERMINATED:
+            printf("Terminated\n");
+            break;
+        case RUNNING:
+            printf("Running\n");
+            break;
+        case SUSPENDED:
+            printf("Suspended\n");
+            break;
+        default:
+            break;
+        }
+
+        if (curr->status == TERMINATED) {
+            process* toDelete = curr;
+            curr = curr->next;
+            freeCmdLines(toDelete->cmd);
+            free(toDelete);
+            continue;
+        }
+        curr = curr->next;
+    }
+}
+
+/*free all memory allocated for the process list.*/
+void freeProcessList(process* process_list){
+    while (process_list != NULL) {
+        process *temp = process_list;
+        process_list = process_list->next;
+        freeCmdLines(temp->cmd);
+        free(temp);
+    }
+}
+
+/*go over the process list, and for each process check if it is done, you can use waitpid with the option WNOHANG*/
+void updateProcessList(process **process_list){
+    process *curr = *process_list;
+    int status;
+    pid_t result;
+
+    while (curr != NULL) {
+        result = waitpid(curr->pid, &status, WNOHANG);
+        
+        if (result == 0) {
+            //still running
+            curr = curr->next;
+            continue;
+        } else if (result == -1) {
+            perror("waitpid failed");
+            return;
+        }
+        
+        if (WIFEXITED(status) || WIFSIGNALED(status)) {
+            // terminated
+            curr->status = TERMINATED;
+        } else if (WIFSTOPPED(status)) {
+            // stopped
+            curr->status = SUSPENDED;
+        } else if (WIFCONTINUED(status)) {
+            // resumed
+            curr->status = RUNNING;
+        }
+
+        curr = curr->next;
+    }
+}
+
+/*find the process with the given id in the process_list and change its status to the received status.*/
+void updateProcessStatus(process* process_list, int pid, int status){
+    while (process_list!=NULL)
+    {
+        if(process_list->pid == pid){
+            process_list->status = status;
+            return;
+        }
+        process_list = process_list->next;
+    }
 }
