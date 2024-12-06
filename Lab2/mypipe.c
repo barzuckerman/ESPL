@@ -13,8 +13,7 @@ int main() {
         perror("pipe failed");
         exit(EXIT_FAILURE);
     }
-    
-    // fprintf(stderr, "(parent_process>forking...)\n");
+
     child = fork();
 
     if (child == -1) {
