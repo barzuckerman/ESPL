@@ -20,11 +20,11 @@ int debug = 0;
 int main(int argc, char **argv) {
     char cwd[PATH_MAX];
     char input[2048];
-    if(strcmp(argv[1], "-d") == 0){
-        debug = 1;
-    }
-    else if(strcmp(argv[1], "+d") == 0){
-        debug = 0;
+    if (argc > 1) { // Check if an argument is passed to prevent segmentation faults
+        if (strcmp(argv[1], "-d") == 0)
+            debug = 1;
+        else if (strcmp(argv[1], "+d") == 0)
+            debug = 0;
     }
     while (1){
         if (getcwd(cwd, sizeof(cwd)) != NULL) {
