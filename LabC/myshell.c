@@ -28,12 +28,15 @@ int toInt(char *str);
 void executePipeline(cmdLine *pcmd1, cmdLine *pcmd2);
 void addProcess(process **process_list, cmdLine *cmd, pid_t pid);
 void printProcessList(process **process_list);
-void freeProcessList(process* process_list);
+void freeProcessList(process *process_list);
 void updateProcessList(process **process_list);
+void updateProcessStatus(process *process_list, int pid, int status);
+void stopProcess(process **process_list, int pid);
+void terminateProcess(process **process_list, int pid);
+void wakeProcess(process **process_list, int pid);
 //------------global------------
 int debug = 0;
 process *process_list;
-
 
 int main(int argc, char **argv)
 {
@@ -85,7 +88,7 @@ int main(int argc, char **argv)
                     else
                     {
                         int pid = toInt(pcmdl->arguments[1]);
-                        kill(pid, SIGSTOP);
+                        stopProcess(&process_list, pid);
                     }
                 }
                 else if (strcmp(pcmdl->arguments[0], "wake") == 0)
@@ -97,7 +100,7 @@ int main(int argc, char **argv)
                     else
                     {
                         int pid = toInt(pcmdl->arguments[1]);
-                        kill(pid, SIGCONT);
+                        wakeProcess(&process_list, pid);
                     }
                 }
                 else if (strcmp(pcmdl->arguments[0], "term") == 0)
@@ -109,12 +112,12 @@ int main(int argc, char **argv)
                     else
                     {
                         int pid = toInt(pcmdl->arguments[1]);
-                        kill(pid, SIGINT);
+                        terminateProcess(&process_list, pid);
                     }
                 }
                 else if (strcmp(pcmdl->arguments[0], "procs") == 0)
                 {
-                    printProcessList(process_list);
+                    printProcessList(&process_list);
                 }
                 else
                 {
@@ -148,7 +151,6 @@ void execute(cmdLine *pCmdLine)
 
         if (pid == 0)
         {
-
             if (pCmdLine->inputRedirect != NULL)
             {
                 int fileOpen = open(pCmdLine->inputRedirect, O_RDONLY | O_CREAT, 0777); // 0777 -> for everyone
@@ -238,10 +240,11 @@ void executePipeline(cmdLine *pcmd1, cmdLine *pcmd2)
         perror("execv failed");
         // exit(EXIT_SUCCESS);
     }
-    else{
+    else
+    {
         addProcess(&process_list, pcmd1, child1);
     }
-    
+
     child2 = fork();
     if (child2 == -1)
     {
@@ -270,7 +273,8 @@ void executePipeline(cmdLine *pcmd1, cmdLine *pcmd2)
         perror("execv failed");
         // exit(EXIT_SUCCESS);
     }
-    else{    // parent
+    else
+    { // parent
         addProcess(&process_list, pcmd2, child2);
     }
 
@@ -301,6 +305,7 @@ void printProcessList(process **process_list)
 {
     updateProcessList(process_list);
     process *curr = *process_list;
+    process *prev = NULL;
     int count = 1;
     printf("Index\t\tPID\t\tCommand\t\tSTATUS\n");
     while (curr != NULL)
@@ -324,18 +329,26 @@ void printProcessList(process **process_list)
 
         if (curr->status == TERMINATED) {
             process* toDelete = curr;
+            if (prev) {
+                prev->next = curr->next;
+            } else {
+                *process_list = curr->next;
+            }
             curr = curr->next;
             freeCmdLines(toDelete->cmd);
             free(toDelete);
-            continue;
+        } else {
+            prev = curr;
+            curr = curr->next;
         }
-        curr = curr->next;
     }
 }
 
 /*free all memory allocated for the process list.*/
-void freeProcessList(process* process_list){
-    while (process_list != NULL) {
+void freeProcessList(process *process_list)
+{
+    while (process_list != NULL)
+    {
         process *temp = process_list;
         process_list = process_list->next;
         freeCmdLines(temp->cmd);
@@ -344,30 +357,40 @@ void freeProcessList(process* process_list){
 }
 
 /*go over the process list, and for each process check if it is done, you can use waitpid with the option WNOHANG*/
-void updateProcessList(process **process_list){
+void updateProcessList(process **process_list)
+{
     process *curr = *process_list;
     int status;
     pid_t result;
 
-    while (curr != NULL) {
+    while (curr != NULL)
+    {
         result = waitpid(curr->pid, &status, WNOHANG);
-        
-        if (result == 0) {
-            //still running
+
+        if (result == 0)
+        {
+            // still running
             curr = curr->next;
             continue;
-        } else if (result == -1) {
+        }
+        else if (result == -1)
+        {
             perror("waitpid failed");
             return;
         }
-        
-        if (WIFEXITED(status) || WIFSIGNALED(status)) {
+
+        if (WIFEXITED(status) || WIFSIGNALED(status))
+        {
             // terminated
             curr->status = TERMINATED;
-        } else if (WIFSTOPPED(status)) {
+        }
+        else if (WIFSTOPPED(status))
+        {
             // stopped
             curr->status = SUSPENDED;
-        } else if (WIFCONTINUED(status)) {
+        }
+        else if (WIFCONTINUED(status))
+        {
             // resumed
             curr->status = RUNNING;
         }
@@ -377,13 +400,54 @@ void updateProcessList(process **process_list){
 }
 
 /*find the process with the given id in the process_list and change its status to the received status.*/
-void updateProcessStatus(process* process_list, int pid, int status){
-    while (process_list!=NULL)
+void updateProcessStatus(process *process_list, int pid, int status)
+{
+    while (process_list != NULL)
     {
-        if(process_list->pid == pid){
+        if (process_list->pid == pid)
+        {
             process_list->status = status;
             return;
         }
         process_list = process_list->next;
+    }
+}
+
+void stopProcess(process **process_list, int pid)
+{
+    if (kill(pid, SIGTSTP) == 0)
+    {
+        printf("Looper handling SIGTSTP\n");
+        updateProcessStatus(*process_list, pid, SUSPENDED);
+    }
+    else
+    {
+        perror("Failed to stop process");
+    }
+}
+
+void terminateProcess(process **process_list, int pid)
+{
+    if (kill(pid, SIGINT) == 0)
+    {
+        printf("Looper handling SIGINT\n");
+        updateProcessStatus(*process_list, pid, TERMINATED);
+    }
+    else
+    {
+        perror("Failed to terminate process");
+    }
+}
+
+void wakeProcess(process **process_list, int pid)
+{
+    if (kill(pid, SIGCONT) == 0)
+    {
+        printf("Looper handling SIGCONT\n");
+        updateProcessStatus(*process_list, pid, RUNNING);
+    }
+    else
+    {
+        perror("Failed to continue process");
     }
 }
