@@ -6,7 +6,7 @@
 
 void handler(int sig)
 {
-	printf("\nRecieved Signal : %s\n", strsignal(sig));
+	// printf("\nRecieved Signal : %s\n", strsignal(sig));
 	if (sig == SIGTSTP)
 	{
 		signal(SIGTSTP, SIG_DFL);
@@ -22,7 +22,7 @@ void handler(int sig)
 int main(int argc, char **argv)
 {
 
-	printf("Starting the program\n");
+	// printf("Starting the program\n");
 	signal(SIGINT, handler);
 	signal(SIGTSTP, handler);
 	signal(SIGCONT, handler);

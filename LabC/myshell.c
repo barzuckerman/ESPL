@@ -34,12 +34,32 @@ void updateProcessStatus(process *process_list, int pid, int status);
 void stopProcess(process **process_list, int pid);
 void terminateProcess(process **process_list, int pid);
 void wakeProcess(process **process_list, int pid);
+//------------------history------------------
+#define HISTLEN 10
+
+typedef struct historyCommand
+{
+    char *command;
+    struct historyCommand *next;
+} historyCommand;
+
+historyCommand *historyHead;
+historyCommand *historyTail;
+int historySize;
+
+void historyConstructor();
+void addToHistory(char *command);
+void printHistory();
+char *getCommandFromHistory(int n);
+void freeHistory();
+
 //------------global------------
 int debug = 0;
 process *process_list;
 
 int main(int argc, char **argv)
 {
+    historyConstructor();
     char cwd[PATH_MAX];
     char input[2048];
     if (argc > 1)
@@ -49,16 +69,21 @@ int main(int argc, char **argv)
         else if (strcmp(argv[1], "+d") == 0)
             debug = 0;
     }
+    cmdLine *pcmdl;
     while (1)
     {
         if (getcwd(cwd, sizeof(cwd)) != NULL)
         {
-            printf("Current working directory: %s\n", cwd);
+            // printf("Current working directory: %s\n", cwd);
             if (fgets(input, sizeof(input), stdin) != NULL)
             {
-                cmdLine *pcmdl = parseCmdLines(input);
+                pcmdl = parseCmdLines(input);
                 if (strcmp(pcmdl->arguments[0], "quit") == 0)
                 {
+                    freeProcessList(process_list);
+                    free(pcmdl);
+                    pcmdl = NULL;
+                    freeHistory();
                     return 0;
                 }
                 else if (strcmp(pcmdl->arguments[0], "cd") == 0)
@@ -119,11 +144,46 @@ int main(int argc, char **argv)
                 {
                     printProcessList(&process_list);
                 }
+                else if (strcmp(pcmdl->arguments[0], "history") == 0)
+                {
+                    printHistory();
+                }
+                else if (strcmp(pcmdl->arguments[0], "!!") == 0)
+                {
+                    if (historySize == 0)
+                    {
+                        fprintf(stderr, "No commands in history\n");
+                    }
+                    else
+                    {
+                        char *lastCommand = getCommandFromHistory(historySize);
+                        addToHistory(lastCommand);
+                        cmdLine *lastCmdLine = parseCmdLines(lastCommand);
+                        execute(lastCmdLine);
+                        // freeCmdLines(lastCmdLine);
+                    }
+                }
+                else if (pcmdl->arguments[0][0] == '!')
+                {
+                    int n = toInt(pcmdl->arguments[0] + 1);
+                    if (n > 0 && n <= historySize)
+                    {
+                        char *command = getCommandFromHistory(n);
+                        addToHistory(command);
+                        cmdLine *cmdLine = parseCmdLines(command);
+                        execute(cmdLine);
+                        // freeCmdLines(cmdLine);
+                    }
+                    else
+                    {
+                        fprintf(stderr, "Invalid history index\n");
+                    }
+                }
                 else
                 {
+                    addToHistory(input);
                     execute(pcmdl);
                 }
-                freeCmdLines(pcmdl);
             }
         }
         else
@@ -310,7 +370,6 @@ void printProcessList(process **process_list)
     printf("Index\t\tPID\t\tCommand\t\tSTATUS\n");
     while (curr != NULL)
     {
-        // Print each process
         printf("%d\t\t%d\t\t%s\t\t", count++, curr->pid, curr->cmd->arguments[0]);
         switch (curr->status)
         {
@@ -335,7 +394,7 @@ void printProcessList(process **process_list)
                 *process_list = curr->next;
             }
             curr = curr->next;
-            freeCmdLines(toDelete->cmd);
+            free(toDelete->cmd);
             free(toDelete);
         } else {
             prev = curr;
@@ -351,9 +410,11 @@ void freeProcessList(process *process_list)
     {
         process *temp = process_list;
         process_list = process_list->next;
-        freeCmdLines(temp->cmd);
+        free(temp->cmd);
         free(temp);
+        temp = NULL;
     }
+    process_list = NULL;
 }
 
 /*go over the process list, and for each process check if it is done, you can use waitpid with the option WNOHANG*/
@@ -450,5 +511,99 @@ void wakeProcess(process **process_list, int pid)
     else
     {
         perror("Failed to continue process");
+    }
+}
+void historyConstructor()
+{
+    historyHead = NULL;
+    historyTail = NULL;
+    historySize = 0;
+}
+
+void addToHistory(char *command)
+{
+    // If history is full, remove the oldest command
+    if (historySize == HISTLEN)
+    {
+        historyCommand *temp = historyHead;
+        historyHead = historyHead->next;
+        free(temp->command);
+        free(temp);
+        temp = NULL;
+        historySize--;
+    }
+
+    // Add the new command to the history
+    historyCommand *newCommand = (historyCommand *)malloc(sizeof(historyCommand));
+    if (!newCommand)
+    {
+        perror("Failed to allocate memory for new history command");
+        exit(EXIT_FAILURE);
+    }
+    newCommand->command = (char *)malloc(strlen(command) + 1);
+    if (!newCommand->command)
+    {
+        perror("Failed to allocate memory for command");
+        free(newCommand);
+        newCommand = NULL;
+        exit(EXIT_FAILURE);
+    }
+    strcpy(newCommand->command, command);
+    newCommand->next = NULL;
+
+    if (historySize == 0)
+    {
+        historyHead = newCommand;
+        historyTail = newCommand;
+    }
+    else
+    {
+        historyTail->next = newCommand;
+        historyTail = newCommand;
+    }
+    historySize++;
+}
+
+void printHistory()
+{
+    historyCommand *curr = historyHead;
+    int count = 1;
+    while (curr != NULL)
+    {
+        printf("%d. %s", count++, curr->command);
+        curr = curr->next;
+    }
+}
+
+char *getCommandFromHistory(int n)
+{
+    if (n < 1 || n > historySize)
+    {
+        fprintf(stderr, "Invalid history index\n");
+        return NULL;
+    }
+    historyCommand *curr = historyHead;
+    int count = 1;
+    while (curr != NULL)
+    {
+        if (count == n)
+        {
+            return curr->command;
+        }
+        count++;
+        curr = curr->next;
+    }
+    return NULL;
+}
+
+void freeHistory()
+{
+    historyCommand *curr = historyHead;
+    while (curr != NULL)
+    {
+        historyCommand *next = curr->next;
+        free(curr->command);
+        free(curr);
+        curr = next;
     }
 }
