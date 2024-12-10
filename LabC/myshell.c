@@ -419,6 +419,7 @@ void stopProcess(process **process_list, int pid)
     {
         printf("Looper handling SIGTSTP\n");
         updateProcessStatus(*process_list, pid, SUSPENDED);
+        
     }
     else
     {
