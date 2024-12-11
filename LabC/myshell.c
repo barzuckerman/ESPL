@@ -55,7 +55,7 @@ void freeHistory();
 
 //------------global------------
 int debug = 0;
-process *process_list;
+process *processList;
 
 int main(int argc, char **argv)
 {
@@ -69,7 +69,7 @@ int main(int argc, char **argv)
         else if (strcmp(argv[1], "+d") == 0)
             debug = 0;
     }
-    cmdLine *pcmdl;
+    cmdLine *pcmdl = NULL, *cmdLine1 = NULL;
     while (1)
     {
         if (getcwd(cwd, sizeof(cwd)) != NULL)
@@ -78,12 +78,25 @@ int main(int argc, char **argv)
             if (fgets(input, sizeof(input), stdin) != NULL)
             {
                 pcmdl = parseCmdLines(input);
-                if (strcmp(pcmdl->arguments[0], "quit") == 0)
+                if (strcmp(pcmdl->arguments[0], "quit") == 0) //TODO: CHANGES
                 {
-                    freeProcessList(process_list);
-                    free(pcmdl);
-                    pcmdl = NULL;
                     freeHistory();
+                    // fprintf(stdout, processList->cmd);
+                    // fprintf(stdout, processList->pid);
+                    // fprintf(stdout, processList->status);
+                    // fprintf(stdout, processList->next);
+                    // printProcessList(&processList->cmd);
+                    freeProcessList(processList);
+                    if (pcmdl) {
+                        freeCmdLines(pcmdl);
+                        pcmdl = NULL;
+                    }
+
+                    if (cmdLine1) {
+                        freeCmdLines(cmdLine1);
+                        cmdLine1 = NULL;
+                    }
+                
                     return 0;
                 }
                 else if (strcmp(pcmdl->arguments[0], "cd") == 0)
@@ -113,7 +126,7 @@ int main(int argc, char **argv)
                     else
                     {
                         int pid = toInt(pcmdl->arguments[1]);
-                        stopProcess(&process_list, pid);
+                        stopProcess(&processList, pid);
                     }
                 }
                 else if (strcmp(pcmdl->arguments[0], "wake") == 0)
@@ -125,7 +138,7 @@ int main(int argc, char **argv)
                     else
                     {
                         int pid = toInt(pcmdl->arguments[1]);
-                        wakeProcess(&process_list, pid);
+                        wakeProcess(&processList, pid);
                     }
                 }
                 else if (strcmp(pcmdl->arguments[0], "term") == 0)
@@ -137,12 +150,12 @@ int main(int argc, char **argv)
                     else
                     {
                         int pid = toInt(pcmdl->arguments[1]);
-                        terminateProcess(&process_list, pid);
+                        terminateProcess(&processList, pid);
                     }
                 }
                 else if (strcmp(pcmdl->arguments[0], "procs") == 0)
                 {
-                    printProcessList(&process_list);
+                    printProcessList(&processList);
                 }
                 else if (strcmp(pcmdl->arguments[0], "history") == 0)
                 {
@@ -160,7 +173,7 @@ int main(int argc, char **argv)
                         addToHistory(lastCommand);
                         cmdLine *lastCmdLine = parseCmdLines(lastCommand);
                         execute(lastCmdLine);
-                        // freeCmdLines(lastCmdLine);
+                        freeCmdLines(lastCmdLine);
                     }
                 }
                 else if (pcmdl->arguments[0][0] == '!')
@@ -172,7 +185,7 @@ int main(int argc, char **argv)
                         addToHistory(command);
                         cmdLine *cmdLine = parseCmdLines(command);
                         execute(cmdLine);
-                        // freeCmdLines(cmdLine);
+                        freeCmdLines(cmdLine);
                     }
                     else
                     {
@@ -183,7 +196,15 @@ int main(int argc, char **argv)
                 {
                     addToHistory(input);
                     execute(pcmdl);
+                    if (pcmdl) {
+                        freeCmdLines(pcmdl);
+                        pcmdl = NULL;
+                    }
+                    freeCmdLines(pcmdl);
+                    pcmdl = NULL;
                 }
+                freeCmdLines(pcmdl);
+                pcmdl = NULL;
             }
         }
         else
@@ -244,7 +265,7 @@ void execute(cmdLine *pCmdLine)
                 fprintf(stderr, "Executing command: %s\n", pCmdLine->arguments[0]);
             }
 
-            addProcess(&process_list, pCmdLine, pid);
+            addProcess(&processList, pCmdLine, pid);
 
             if (pCmdLine->blocking)
             {
@@ -302,7 +323,7 @@ void executePipeline(cmdLine *pcmd1, cmdLine *pcmd2)
     }
     else
     {
-        addProcess(&process_list, pcmd1, child1);
+        addProcess(&processList, pcmd1, child1);
     }
 
     child2 = fork();
@@ -335,7 +356,7 @@ void executePipeline(cmdLine *pcmd1, cmdLine *pcmd2)
     }
     else
     { // parent
-        addProcess(&process_list, pcmd2, child2);
+        addProcess(&processList, pcmd2, child2);
     }
 
     close(pipeFileDescriptors[0]);
@@ -394,27 +415,34 @@ void printProcessList(process **process_list)
                 *process_list = curr->next;
             }
             curr = curr->next;
-            free(toDelete->cmd);
+            freeCmdLines(toDelete->cmd);
             free(toDelete);
+            toDelete = NULL;
         } else {
             prev = curr;
             curr = curr->next;
         }
     }
+    free(curr);
+    curr = NULL;
+    free(prev);
+    prev = NULL;
 }
 
 /*free all memory allocated for the process list.*/
-void freeProcessList(process *process_list)
+void freeProcessList(process *process_list) //TODO: SHOW YARDEN
 {
-    while (process_list != NULL)
-    {
+    while (process_list != NULL) {
         process *temp = process_list;
         process_list = process_list->next;
-        free(temp->cmd);
+        freeCmdLines(temp->cmd);
         free(temp);
         temp = NULL;
     }
-    process_list = NULL;
+
+    // After freeing all processes, set the global list pointer to NULL
+    processList = NULL;  // Set the global processList to NULL directly
+    fprintf(stderr, "process list %p\n", processList);
 }
 
 /*go over the process list, and for each process check if it is done, you can use waitpid with the option WNOHANG*/
@@ -529,6 +557,8 @@ void addToHistory(char *command)
         historyHead = historyHead->next;
         free(temp->command);
         free(temp);
+         if (historyHead == NULL) // In case only one element existed
+            historyTail = NULL;
         temp = NULL;
         historySize--;
     }
@@ -538,7 +568,7 @@ void addToHistory(char *command)
     if (!newCommand)
     {
         perror("Failed to allocate memory for new history command");
-        exit(EXIT_FAILURE);
+        return;
     }
     newCommand->command = (char *)malloc(strlen(command) + 1);
     if (!newCommand->command)
@@ -546,7 +576,7 @@ void addToHistory(char *command)
         perror("Failed to allocate memory for command");
         free(newCommand);
         newCommand = NULL;
-        exit(EXIT_FAILURE);
+        return;
     }
     strcpy(newCommand->command, command);
     newCommand->next = NULL;
@@ -599,11 +629,14 @@ char *getCommandFromHistory(int n)
 void freeHistory()
 {
     historyCommand *curr = historyHead;
+    historyCommand *next;
     while (curr != NULL)
     {
-        historyCommand *next = curr->next;
+        next = curr->next;
         free(curr->command);
         free(curr);
         curr = next;
     }
+    historyHead = NULL;
+    historyTail = NULL;
 }
