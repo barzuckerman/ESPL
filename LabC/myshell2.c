@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <linux/limits.h>
-#include <limits.h>
 #include <unistd.h>
 #include <string.h>
 #include <sys/wait.h>
@@ -75,11 +74,11 @@ int main(int argc, char **argv)
     {
         if (getcwd(cwd, sizeof(cwd)) != NULL)
         {
-            //printf("Current working directory: %s\n", cwd);
+            // printf("Current working directory: %s\n", cwd);
             if (fgets(input, sizeof(input), stdin) != NULL)
             {
                 pcmdl = parseCmdLines(input);
-                if (strcmp(pcmdl->arguments[0], "quit") == 0)
+                if (strcmp(pcmdl->arguments[0], "quit") == 0) //TODO: CHANGES
                 {
                     freeHistory();
                     freeProcessList(processList);
@@ -151,9 +150,14 @@ int main(int argc, char **argv)
                 }
                 else if (strcmp(pcmdl->arguments[0], "procs") == 0)
                 {
-                    printProcessList(&processList);
+                    if (processList == NULL)
+                    {
+                        fprintf(stderr, "No processes to display\n");
+                    }
+                    else {
+                        printProcessList(&processList);
+                    }
                 }
-                //-------------history------------------ TODO
                 else if (strcmp(pcmdl->arguments[0], "history") == 0)
                 {
                     printHistory();
@@ -192,10 +196,14 @@ int main(int argc, char **argv)
                 else
                 {
                     addToHistory(input);
-                    //-------------history------------------
                     execute(pcmdl);
+                    if (pcmdl) {
+                        freeCmdLines(pcmdl);
+                        pcmdl = NULL;
+                    }
                 }
                 freeCmdLines(pcmdl);
+                pcmdl = NULL;
             }
         }
         else
@@ -357,7 +365,7 @@ void executePipeline(cmdLine *pcmd1, cmdLine *pcmd2)
 }
 /*Receive a process list (process_list), a command (cmd), and the process id (pid) of the process running the command.
 Note that process_list is a pointer to a pointer so that we can insert at the beginning of the list if we wish*/
-void addProcess(process **process_list_arg, cmdLine *cmd, pid_t pid)
+void addProcess(process **process_list, cmdLine *cmd, pid_t pid)
 {
     process *new_process = (process *)malloc(sizeof(process));
     if (!new_process)
@@ -368,8 +376,8 @@ void addProcess(process **process_list_arg, cmdLine *cmd, pid_t pid)
     new_process->cmd = cmd;
     new_process->pid = pid;
     new_process->status = RUNNING; // Assuming new processes are initially running
-    new_process->next = *process_list_arg;
-    *process_list_arg = new_process;
+    new_process->next = *process_list;
+    *process_list = new_process;
 }
 
 /*print the processes.*/
@@ -382,7 +390,6 @@ void printProcessList(process **process_list)
     printf("Index\t\tPID\t\tCommand\t\tSTATUS\n");
     while (curr != NULL)
     {
-        // Print each process
         printf("%d\t\t%d\t\t%s\t\t", count++, curr->pid, curr->cmd->arguments[0]);
         switch (curr->status)
         {
@@ -399,41 +406,39 @@ void printProcessList(process **process_list)
             break;
         }
 
-        if (curr->status == TERMINATED)
-        {
-            process *toDelete = curr;
-            if (prev)
-            {
+        if (curr->status == TERMINATED) {
+            process* toDelete = curr;
+            if (prev) {
                 prev->next = curr->next;
-            }
-            else
-            {
+            } else {
                 *process_list = curr->next;
             }
             curr = curr->next;
             freeCmdLines(toDelete->cmd);
             free(toDelete);
             toDelete = NULL;
-        }
-        else
-        {
+        } else {
             prev = curr;
             curr = curr->next;
         }
     }
+    free(curr);
+    curr = NULL;
+    free(prev);
+    prev = NULL;
 }
 
 /*free all memory allocated for the process list.*/
-void freeProcessList(process *process_list)
+void freeProcessList(process *process_list) //TODO: SHOW YARDEN
 {
-    while (process_list != NULL)
-    {
+    while (process_list != NULL) {
         process *temp = process_list;
         process_list = process_list->next;
         freeCmdLines(temp->cmd);
         free(temp);
         temp = NULL;
     }
+
     processList = NULL;
 }
 
@@ -500,6 +505,7 @@ void stopProcess(process **process_list, int pid)
     {
         printf("Looper handling SIGTSTP\n");
         updateProcessStatus(*process_list, pid, SUSPENDED);
+        
     }
     else
     {
@@ -532,7 +538,6 @@ void wakeProcess(process **process_list, int pid)
         perror("Failed to continue process");
     }
 }
-
 void historyConstructor()
 {
     historyHead = NULL;
@@ -560,14 +565,15 @@ void addToHistory(char *command)
     if (!newCommand)
     {
         perror("Failed to allocate memory for new history command");
-        exit(EXIT_FAILURE);
+        return;
     }
     newCommand->command = (char *)malloc(strlen(command) + 1);
     if (!newCommand->command)
     {
         perror("Failed to allocate memory for command");
         free(newCommand);
-        exit(EXIT_FAILURE);
+        newCommand = NULL;
+        return;
     }
     strcpy(newCommand->command, command);
     newCommand->next = NULL;
