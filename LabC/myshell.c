@@ -195,7 +195,7 @@ int main(int argc, char **argv)
                     //-------------history------------------
                     execute(pcmdl);
                 }
-                freeCmdLines(pcmdl);
+                //freeCmdLines(pcmdl);
             }
         }
         else
@@ -399,6 +399,7 @@ void printProcessList(process **process_list)
             break;
         }
 
+        // Deleting terminated process and freeing associated memory
         if (curr->status == TERMINATED)
         {
             process *toDelete = curr;
@@ -411,9 +412,10 @@ void printProcessList(process **process_list)
                 *process_list = curr->next;
             }
             curr = curr->next;
-            freeCmdLines(toDelete->cmd);
+
+            // Free the command and process node memory
+            freeCmdLines(toDelete->cmd); // Assuming cmd is dynamically allocated
             free(toDelete);
-            toDelete = NULL;
         }
         else
         {
@@ -456,6 +458,11 @@ void updateProcessList(process **process_list)
         }
         else if (result == -1)
         {
+            if (errno == ECHILD)
+            {
+                // No child processes to wait for
+                break; // Exit loop if there are no children
+            }
             perror("waitpid failed");
             return;
         }
