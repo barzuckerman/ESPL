@@ -153,7 +153,6 @@ int main(int argc, char **argv)
                 {
                     printProcessList(&processList);
                 }
-                //-------------history------------------ TODO
                 else if (strcmp(pcmdl->arguments[0], "history") == 0)
                 {
                     printHistory();
@@ -194,8 +193,16 @@ int main(int argc, char **argv)
                     addToHistory(input);
                     //-------------history------------------
                     execute(pcmdl);
+                    // if (pcmdl) {
+                    //     freeCmdLines(pcmdl);
+                    //     pcmdl = NULL;
+                    // }
                 }
-                //freeCmdLines(pcmdl);
+                if(pcmdl!=NULL){
+                    freeCmdLines(pcmdl);
+                    pcmdl = NULL;
+                }
+                
             }
         }
         else
