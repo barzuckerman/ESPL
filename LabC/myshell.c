@@ -81,11 +81,6 @@ int main(int argc, char **argv)
                 if (strcmp(pcmdl->arguments[0], "quit") == 0) //TODO: CHANGES
                 {
                     freeHistory();
-                    // fprintf(stdout, processList->cmd);
-                    // fprintf(stdout, processList->pid);
-                    // fprintf(stdout, processList->status);
-                    // fprintf(stdout, processList->next);
-                    // printProcessList(&processList->cmd);
                     freeProcessList(processList);
                     if (pcmdl) {
                         freeCmdLines(pcmdl);
@@ -155,7 +150,13 @@ int main(int argc, char **argv)
                 }
                 else if (strcmp(pcmdl->arguments[0], "procs") == 0)
                 {
-                    printProcessList(&processList);
+                    if (processList == NULL)
+                    {
+                        fprintf(stderr, "No processes to display\n");
+                    }
+                    else {
+                        printProcessList(&processList);
+                    }
                 }
                 else if (strcmp(pcmdl->arguments[0], "history") == 0)
                 {
@@ -200,8 +201,6 @@ int main(int argc, char **argv)
                         freeCmdLines(pcmdl);
                         pcmdl = NULL;
                     }
-                    freeCmdLines(pcmdl);
-                    pcmdl = NULL;
                 }
                 freeCmdLines(pcmdl);
                 pcmdl = NULL;
@@ -423,10 +422,10 @@ void printProcessList(process **process_list)
             curr = curr->next;
         }
     }
-    free(curr);
-    curr = NULL;
-    free(prev);
-    prev = NULL;
+    // free(curr);
+    // curr = NULL;
+    // free(prev);
+    // prev = NULL;
 }
 
 /*free all memory allocated for the process list.*/
