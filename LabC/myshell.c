@@ -112,6 +112,10 @@ int main(int argc, char **argv)
                             fprintf(stderr, "Error: %s\n", strerror(errno));
                         }
                     }
+                    if (pcmdl) {
+                        freeCmdLines(pcmdl);
+                        pcmdl = NULL;
+                    }
                 }
                 else if (strcmp(pcmdl->arguments[0], "stop") == 0)
                 {
@@ -123,6 +127,10 @@ int main(int argc, char **argv)
                     {
                         int pid = toInt(pcmdl->arguments[1]);
                         stopProcess(&processList, pid);
+                    }
+                    if (pcmdl) {
+                        freeCmdLines(pcmdl);
+                        pcmdl = NULL;
                     }
                 }
                 else if (strcmp(pcmdl->arguments[0], "wake") == 0)
@@ -136,6 +144,10 @@ int main(int argc, char **argv)
                         int pid = toInt(pcmdl->arguments[1]);
                         wakeProcess(&processList, pid);
                     }
+                    if (pcmdl) {
+                        freeCmdLines(pcmdl);
+                        pcmdl = NULL;
+                    }
                 }
                 else if (strcmp(pcmdl->arguments[0], "term") == 0)
                 {
@@ -148,14 +160,26 @@ int main(int argc, char **argv)
                         int pid = toInt(pcmdl->arguments[1]);
                         terminateProcess(&processList, pid);
                     }
+                    if (pcmdl) {
+                        freeCmdLines(pcmdl);
+                        pcmdl = NULL;
+                    }
                 }
                 else if (strcmp(pcmdl->arguments[0], "procs") == 0)
                 {
                     printProcessList(&processList);
+                    if (pcmdl) {
+                        freeCmdLines(pcmdl);
+                        pcmdl = NULL;
+                    }
                 }
                 else if (strcmp(pcmdl->arguments[0], "history") == 0)
                 {
                     printHistory();
+                    if (pcmdl) {
+                        freeCmdLines(pcmdl);
+                        pcmdl = NULL;
+                    }
                 }
                 else if (strcmp(pcmdl->arguments[0], "!!") == 0)
                 {
@@ -168,8 +192,15 @@ int main(int argc, char **argv)
                         char *lastCommand = getCommandFromHistory(historySize);
                         addToHistory(lastCommand);
                         cmdLine *lastCmdLine = parseCmdLines(lastCommand);
-                        execute(lastCmdLine);
-                        freeCmdLines(lastCmdLine);
+                        if (lastCmdLine) {
+                            execute(lastCmdLine);
+                            // freeCmdLines(lastCmdLine);
+                            // lastCmdLine = NULL;
+                        }
+                    }
+                    if (pcmdl) {
+                        freeCmdLines(pcmdl);
+                        pcmdl = NULL;
                     }
                 }
                 else if (pcmdl->arguments[0][0] == '!')
@@ -179,13 +210,17 @@ int main(int argc, char **argv)
                     {
                         char *command = getCommandFromHistory(n);
                         addToHistory(command);
-                        cmdLine *cmdLine = parseCmdLines(command);
-                        execute(cmdLine);
-                        freeCmdLines(cmdLine);
+                        cmdLine *cmdLine2 = parseCmdLines(command);
+                        execute(cmdLine2);
+                        //freeCmdLines(cmdLine);
                     }
                     else
                     {
                         fprintf(stderr, "Invalid history index\n");
+                    }
+                    if (pcmdl) {
+                        freeCmdLines(pcmdl);
+                        pcmdl = NULL;
                     }
                 }
                 else
@@ -193,16 +228,8 @@ int main(int argc, char **argv)
                     addToHistory(input);
                     //-------------history------------------
                     execute(pcmdl);
-                    // if (pcmdl) {
-                    //     freeCmdLines(pcmdl);
-                    //     pcmdl = NULL;
-                    // }
+
                 }
-                if(pcmdl!=NULL){
-                    freeCmdLines(pcmdl);
-                    pcmdl = NULL;
-                }
-                
             }
         }
         else
