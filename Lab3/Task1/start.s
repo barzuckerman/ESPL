@@ -11,10 +11,20 @@
 
 section .data
     newline db 0xA, 0   ; Newline character
+    input db "-i", 0 ;
+    output db "-o", 0 ;
+    buffer db 0
+
+section .bss
+    infile resd 1
+    outfile resd 1
+    shift_value resd 1      ; Store the shift value
+
 section .text
 
 extern strncmp
 extern strlen
+extern positive_atoi
 
 global main
 global system_call
@@ -42,6 +52,11 @@ main:
     mov esi, [ebp+12]       ; argv
     add esi, 4              ; skip first arg
     mov ecx, 1              ; set counter to 1
+
+    ; Set default file descriptors
+    mov dword [infile], stdin
+    mov dword [outfile], stdout
+
 args:
     cmp ecx, [ebp+8]        ; check if we finished reading all the args
     jge end_args            ; If so, jump to end_args
@@ -50,6 +65,7 @@ args:
     push ecx                 ; Save the counter value
 
     ; Get the current argument (argv[ecx])
+
     push dword [esi]         ; push the current argument (argv[i])
     call strlen              ; Get the length of the arg (strlen(argv[i]))
     add esp, 4               ; Clean up the stack after calling strlen
@@ -81,6 +97,7 @@ args:
     call system_call         ; Perform the system call: write(STDOUT, newline, 1)
     add esp, 16              ; Clean up the stack
 
+
     ; Restore the value of ecx (the counter)
     pop ecx                  ; Restore the counter value
 
@@ -90,7 +107,65 @@ args:
     jmp args                 ; Continue to the next argument
 
 end_args:
-    ; End of argument processing, exit the program
+    ; end of argument processing, now encode
+
+encode:
+    push ebp
+    mov ebp, esp
+
+    ; read a character from input file
+    pushad
+    mov edx, 1
+    mov ecx, buffer
+    mov ebx, dword [infile]
+    mov eax, syscall_read
+    int 0x80
+
+    cmp eax, 0
+    popad
+    jle encode_end
+
+    cmp byte [buffer], 0
+    je encode_end
+
+    ; check if the character is in the range 'A' to 'z'
+    cmp byte [buffer], 'A'
+    jl write_encoded_data
+    cmp byte [buffer], 'z'
+    jg write_encoded_data
+    cmp byte [buffer], 'z'
+    je circular_encoding
+
+    ; increment the character by 1
+    inc byte [buffer]
+
+write_encoded_data:
+    ; write the character to the output file
+    pushad
+    mov edx, 1
+    mov ecx, buffer
+    mov ebx, dword [outfile]
+    mov eax, syscall_write
+    
+    ; read the argument to stdout
+    push edx                 ; Length of string
+    push ecx                 ; Address of string
+    push ebx                 ; File descriptor
+    push eax                 ; Syscall number
+    call system_call         ; Perform the system call: write(STDOUT, argv[i], strlen(argv[i]))
+    add esp, 16              ; Clean up the stack
+
+
+    jmp encode
+
+circular_encoding:
+    mov byte [buffer], 'A'
+    jmp write_encoded_data
+
+encode_end:
+    ; mov esp, ebp
+    ; pop ebp
+    ; ret
     jmp exit
 
 system_call:
