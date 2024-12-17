@@ -8,12 +8,20 @@
 %define syscall_open    5
 %define syscall_close   6
 
+%define O_RDONLY        0x0
+%define O_WRONLY        0x1
+%define O_CREAT         0x40
+%define O_TRUNC         0x200
+
+
 
 section .data
     newline db 0xA, 0   ; Newline character
     input db "-i", 0 ;
     output db "-o", 0 ;
     buffer db 0
+    file_error_message db "Error file", 0;
+    file_error_length equ $ - file_error_message
 
 section .bss
     infile resd 1
@@ -97,6 +105,29 @@ args:
     call system_call         ; Perform the system call: write(STDOUT, newline, 1)
     add esp, 16              ; Clean up the stack
 
+    ; Compare if the first two characters of the argument are "-o"
+    pushad
+    push 2                      ; Number of bytes to check
+    lea eax, [esi]              ; Address of the current argument
+    push dword [eax]            ; Push argument string
+    push output                 ; Push "-o" flag
+    call strncmp                ; Compare with "-o"
+    add esp, 12                 ; Clean up the stack
+    cmp eax, 0                  ; Compare result of strncmp
+    popad
+    je define_output            ; Jump if "-o" is found
+
+    ; Compare if the first two characters of the argument are "-i"
+    pushad
+    push 2                      ; Number of bytes to check
+    lea eax, [esi]              ; Address of the current argument
+    push dword [eax]            ; Push argument string
+    push input                  ; Push "-i" flag
+    call strncmp                ; Compare with "-i"
+    add esp, 12                 ; Clean up the stack
+    cmp eax, 0                  ; Compare result of strncmp
+    popad
+    je define_input             ; Jump if "-i" is found
 
     ; Restore the value of ecx (the counter)
     pop ecx                  ; Restore the counter value
@@ -105,6 +136,65 @@ args:
     inc ecx                  ; Increment the argument counter
     add esi, 4               ; Move to the next argument (argv[ecx])
     jmp args                 ; Continue to the next argument
+
+
+define_output:
+    mov ebx, [esi]            ; Get the current argument string (e.g., "-ofile.txt")
+    add ebx, 2                ; Skip the first 2 characters "-o" to get the file name
+    mov ecx, O_WRONLY | O_CREAT | O_TRUNC  ; Open flags: write only, create, truncate
+    mov edx, 0700o            ; File permissions (read/write/execute for owner)
+    mov eax, syscall_open     ; Syscall number for open
+
+    ; write the argument to stdout
+    push edx                 ; Length of string
+    push ecx                 ; Address of string
+    push ebx                 ; File descriptor
+    push eax                 ; Syscall number
+    call system_call         ; Perform the system call: write(STDOUT, argv[i], strlen(argv[i]))
+    add esp, 16              ; Clean up the stack                  ; Perform the open syscall
+
+    test eax, eax             ; Check for errors
+    js file_error             ; Jump to error handling if open fails
+    mov [outfile], eax        ; Save the file descriptor for output
+
+    pop ecx                   ; Restore the counter value
+    inc ecx                   ; Increment the counter
+    add esi, 4                ; Move to the next argument
+    jmp args                  ; Continue processing arguments
+
+define_input:
+    mov ebx, [esi]            ; Get the current argument string (e.g., "-ifile.txt")
+    add ebx, 2                ; Skip the first 2 characters "-i" to get the file name
+    xor ecx, ecx              ; Open flags: O_RDONLY
+    mov eax, syscall_open     ; Syscall number for open
+
+    ; read the argument to stdout
+    push edx                 ; Length of string
+    push ecx                 ; Address of string
+    push ebx                 ; File descriptor
+    push eax                 ; Syscall number
+    call system_call         ; Perform the system call: write(STDOUT, argv[i], strlen(argv[i]))
+
+    add esp, 16              ; Clean up the stack
+    test eax, eax             ; Check for errors
+    js file_error             ; Jump to error handling if open fails
+    mov [infile], eax         ; Save the file descriptor for input
+
+    pop ecx                   ; Restore the counter value
+    inc ecx                   ; Increment the counter
+    add esi, 4                ; Move to the next argument
+    jmp args                  ; Continue processing arguments
+
+file_error:
+    ; Handle file open error
+    mov eax, 4              ; syscall_write
+    mov ebx, stderr         ; stderr
+    lea ecx, [file_error_message]
+    mov edx, file_error_length
+    int 0x80
+    ; Proceed to exit due to failure
+    jmp exit
+    
 
 end_args:
     ; end of argument processing, now encode
