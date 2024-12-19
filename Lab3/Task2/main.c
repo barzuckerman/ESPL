@@ -52,7 +52,7 @@ int main(int argc, char *argv[], char *envp[]) {
             char* prefix = argv[1] + 2; //what is after -a
             if (strncmp(file->name, prefix, strlen(prefix)) == 0) {
                 infector(file->name);  // call the assembly infector to append the virus
-                system_call(SYS_WRITE, STDOUT, "VIRUS ATTACHED", 14);
+                system_call(SYS_WRITE, STDOUT, "VIRUS ATTACHED ", 15);
                 system_call(SYS_WRITE, STDOUT, file->name, strlen(file->name));
                 system_call(SYS_WRITE, STDOUT, "\n", 1);
             }

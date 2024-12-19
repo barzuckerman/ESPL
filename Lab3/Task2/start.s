@@ -14,7 +14,7 @@
 %define syscall_close   6
 
 section .data
-    hello db "Hello, Infected File", 0x0A, 0   ; Newline character
+    hello db 0x0A,"Hello, Infected File", 0x0A, 0   ; Newline character
     hello_len equ $ - hello
     file_error_message db "Error file", 0;
     file_error_length equ $ - file_error_message
@@ -123,7 +123,10 @@ infector:
     call system_call         ; Perform the system call: write(STDOUT, argv[i], strlen(argv[i]))
     add esp, 16              ; Clean up the stack
 
-    ; End of infector
+    popad
+
+    add esp, 4
+    pop ebp
     ret
 
 error:
