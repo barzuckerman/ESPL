@@ -309,7 +309,7 @@ void saveIntoFile(state* s)
         fprintf(stderr, "Error: file name is empty\n");
         return;
     }
-    FILE* file = fopen(s->file_name, "rb+");
+    FILE* file = fopen(s->file_name, "r+b");
     if (file == NULL){
         fprintf(stderr, "Error: file didn't open\n");
         return;
@@ -329,34 +329,51 @@ void saveIntoFile(state* s)
         fclose(file);
         return;
     }
-
-    // Validate address and lengthTODO:
-    if (targetLocation < 0 || length <= 0 || sourceAddress + length * s->unit_size > sizeof(s->mem_buf)) {
-        printf("Error: Invalid address or length.\n");
-        fclose(file);
-        return;
-    }
-
-    // Check if target location exceeds the existing file size
     fseek(file, 0, SEEK_END);
-    long fileSize = ftell(file);
-    if (targetLocation + length * s->unit_size > fileSize) {
-        printf("Error: Target location exceeds file size.\n");
-        fclose(file);
-        return;
-    }
+        if (targetLocation > ftell(file))
+        {
+            fprintf(stderr, "Target location is greater than file size\n");
+            fclose(file);
+            return;
+        }
 
-    if (s->debug_mode)
+        if (s->debug_mode)
             fprintf(stderr, "Debug: source address: %#X, target location: %#X, length: %d\n", sourceAddress, targetLocation, length);
 
-    fseek(file, targetLocation, SEEK_SET);
-    fwrite(sourceAddress ? (void *)sourceAddress : s->mem_buf, s->unit_size, length, file);
+        fseek(file, targetLocation, SEEK_SET);
+        fwrite(sourceAddress ? (void *)sourceAddress : s->mem_buf, s->unit_size, length, file);
+    
+
     fclose(file);
 }
 
 void memoryModify(state* s)
 {
-    printf("Not implemented yet\n");
+    unsigned int locationHex, valueHex;
+    printf("Please enter <location> <val> ");
+    char buffer[100];
+    if(fgets(buffer, sizeof(buffer), stdin) == NULL) {
+        quit(s);
+    }
+    if (sscanf(buffer, "%x %x", &locationHex, &valueHex) != 2) {
+        printf("Invalid input. Format: <location> <val>\n");
+        return;
+    }
+    if (s->debug_mode)
+        fprintf(stderr, "Debug: location: %#X, value: %#X\n", locationHex, valueHex);
+    
+    // Check that location is within bounds
+    if (locationHex >= sizeof(s->mem_buf)) {
+        fprintf(stderr, "Error: Location is out of bounds of the memory buffer.\n");
+        return;
+    }
+
+    // Check that we do not exceed memory bounds based on unit size
+    if ((locationHex + s->unit_size) > sizeof(s->mem_buf)) {
+        fprintf(stderr, "Error: Writing extends past the end of the memory buffer.\n");
+        return;
+    }
+    memcpy(s->mem_buf + locationHex, &valueHex, s->unit_size);
 }
 
 void quit(state* s)
