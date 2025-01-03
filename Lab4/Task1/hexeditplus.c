@@ -4,6 +4,7 @@
 
 #define MAX_LEN 5
 #define BUFFER_SIZE 100
+#define max(a, b) ((a) > (b) ? (a) : (b))
 
 //-----------------------struct-----------------------
 typedef struct {
@@ -324,7 +325,7 @@ void saveIntoFile(state* s)
     }
 
     if(sscanf(input, "%x %x %d", &sourceAddress, &targetLocation, &length) != 3){
-        printf("Invalid input. Expected hexadecimal source, target, and decimal length\n");
+        printf("Invalid input. Format: <source-address> <target-location> <length>\n");
         exit(1);
     }
 
@@ -360,31 +361,19 @@ void saveIntoFile(state* s)
 
 void memoryModify(state* s)
 {
-    unsigned int locationHex, valueHex;
-    printf("Please enter <location> <val> ");
-    char buffer[100];
-    if(fgets(buffer, sizeof(buffer), stdin) == NULL) {
-        quit(s);
-    }
-    if (sscanf(buffer, "%x %x", &locationHex, &valueHex) != 2) {
-        printf("Invalid input. Format: <location> <val>\n");
-        return;
-    }
-    if (s->debug_mode)
-        fprintf(stderr, "Debug: location: %#X, value: %#X\n", locationHex, valueHex);
-    
-    // Check that location is within bounds
-    if (locationHex >= sizeof(s->mem_buf)) {
-        fprintf(stderr, "Error: Location is out of bounds of the memory buffer.\n");
-        return;
-    }
+    printf("Please enter <location> <val>\n");
+    char input[BUFSIZ];
+    unsigned int location, val;
+    if (fgets(input, BUFSIZ, stdin) != NULL)
+    {
+        sscanf(input, "%x %x\n", &location, &val);
 
-    // Check that we do not exceed memory bounds based on unit size
-    if ((locationHex + s->unit_size) > sizeof(s->mem_buf)) {
-        fprintf(stderr, "Error: Writing extends past the end of the memory buffer.\n");
-        return;
+        if (s->debug_mode)
+            fprintf(stderr, "Debug: location: %#X, val: %#X\n", location, val);
+
+        *(unsigned int *)(s->mem_buf + location) = val;
+        s->mem_count = max(location + s->unit_size, s->mem_count);
     }
-    memcpy(s->mem_buf + locationHex, &valueHex, s->unit_size);
 }
 
 void quit(state* s)
