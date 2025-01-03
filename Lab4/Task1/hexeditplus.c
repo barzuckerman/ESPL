@@ -130,7 +130,7 @@ void setFileName(state* s)
 
 void setUnitSize(state *s) {
     int size;
-    printf("Enter unit size (1, 2, or 4): ");
+    printf("Enter unit size (1, 2, or 4):\n");
     char buffer[10];
     if(fgets(buffer, sizeof(buffer), stdin) == NULL) {
         quit(s);
@@ -160,7 +160,7 @@ void loadIntoMemory(state* s)
     int locationHEX;
     int lengthDEC;
 
-    printf("Please enter <location> <length> ");
+    printf("Please enter <location> <length>\n");
     char buffer[10];
     if(fgets(buffer, sizeof(buffer), stdin) == NULL) {
         quit(s);
@@ -219,7 +219,7 @@ void fileDisplay(state* s)
     int offsetHex; // addr
     int lengthDEC; // u Number of units to display
 
-    printf("Enter file offset and length ");
+    printf("Enter file offset and length\n");
     char buffer[10];
     if(fgets(buffer, sizeof(buffer), stdin) == NULL) {
         quit(s);
@@ -274,7 +274,7 @@ void memoryDisplay(state* s)
     int addressHex; // addr
     int lengthDEC; // u Number of units to display
 
-    printf("Enter address and length ");
+    printf("Enter address and length\n");
     char buffer[10];
     if(fgets(buffer, sizeof(buffer), stdin) == NULL) {
         quit(s);
