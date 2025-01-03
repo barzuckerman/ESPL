@@ -305,45 +305,56 @@ void memoryDisplay(state* s)
 
 void saveIntoFile(state* s)
 {
-    if(strcmp(s->file_name, "") == 0) {
-        fprintf(stderr, "Error: file name is empty\n");
-        return;
-    }
+    void* startPointer;
+    char input[BUFSIZ];
     FILE* file = fopen(s->file_name, "r+");
-    if (file == NULL){
-        fprintf(stderr, "Error: file didn't open\n");
-        return;
+
+    if (file == NULL)
+    {
+        printf("failed to open the file\n");
+        exit(1);
+    }
+    int sourceAddress =0;
+    int targetLocation = 0;
+    int length = 0;
+    printf("Please enter <source-address> <target-location> <length>\n");
+    if(fgets(input, BUFSIZ, stdin) == NULL){
+        printf("failed to read user's input\n");
+        exit(1);
     }
 
-    unsigned int sourceAddress;
-    unsigned int targetLocation;
-    int length;
-
-    printf("Please enter <source-address> <target-location> <length> ");
-    char buffer[100];
-    if(fgets(buffer, sizeof(buffer), stdin) == NULL) {
-        quit(s);
+    if(sscanf(input, "%x %x %d", &sourceAddress, &targetLocation, &length) != 3){
+        printf("Invalid input. Expected hexadecimal source, target, and decimal length\n");
+        exit(1);
     }
-    if (sscanf(buffer, "%x %x %d", &sourceAddress, &targetLocation, &length) != 3) {
-        printf("Invalid input. Format: <source-address> <target-location> <length>\n");
-        fclose(file);
-        return;
-    }
-    fseek(file, 0, SEEK_END);
-        if (targetLocation > ftell(file))
-        {
-            fprintf(stderr, "Target location is greater than file size\n");
-            fclose(file);
-            return;
-        }
 
     if (s->debug_mode)
+    {
         fprintf(stderr, "Debug: source address: %#X, target location: %#X, length: %d\n", sourceAddress, targetLocation, length);
+    }
 
-    fseek(file, targetLocation, SEEK_SET);
-    fwrite(sourceAddress ? (void *)sourceAddress : s->mem_buf, s->unit_size, length, file);
-    
+    int fileSize = 0;
+    fseek(file, 0, SEEK_END);
+    fileSize = ftell(file);
+    if (targetLocation > fileSize)
+    {
+        printf("Error: out of bounds for target location\n");
+    }
+    else
+    {
+        if (targetLocation == 0)
+        {
+            startPointer = &(s->mem_buf);
+        }
+        else
+        {
+            startPointer = &sourceAddress;
+        }
 
+        fseek(file, 0, SEEK_SET);  
+        fseek(file, targetLocation, SEEK_SET);
+        fwrite(startPointer, s->unit_size, length, file);
+    }
     fclose(file);
 }
 
