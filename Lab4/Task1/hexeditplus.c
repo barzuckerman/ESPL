@@ -309,7 +309,7 @@ void saveIntoFile(state* s)
         fprintf(stderr, "Error: file name is empty\n");
         return;
     }
-    FILE* file = fopen(s->file_name, "r+b");
+    FILE* file = fopen(s->file_name, "r+");
     if (file == NULL){
         fprintf(stderr, "Error: file didn't open\n");
         return;
@@ -337,11 +337,11 @@ void saveIntoFile(state* s)
             return;
         }
 
-        if (s->debug_mode)
-            fprintf(stderr, "Debug: source address: %#X, target location: %#X, length: %d\n", sourceAddress, targetLocation, length);
+    if (s->debug_mode)
+        fprintf(stderr, "Debug: source address: %#X, target location: %#X, length: %d\n", sourceAddress, targetLocation, length);
 
-        fseek(file, targetLocation, SEEK_SET);
-        fwrite(sourceAddress ? (void *)sourceAddress : s->mem_buf, s->unit_size, length, file);
+    fseek(file, targetLocation, SEEK_SET);
+    fwrite(sourceAddress ? (void *)sourceAddress : s->mem_buf, s->unit_size, length, file);
     
 
     fclose(file);
