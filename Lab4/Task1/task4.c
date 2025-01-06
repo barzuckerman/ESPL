@@ -12,6 +12,11 @@ int digit_counter(const char* str) {
 }
 
 int main(int argc, char* argv[]) {
+     if (argc != 2)
+    {
+        fprintf(stderr, "Usage: %s <string>\n", argv[0]);
+        return 1;
+    }
     int counter = digit_counter(argv[1]);
-    printf("The number of digits in the string is: %d\n",counter);
+    printf("digits exists: %d\n",counter);
 }
