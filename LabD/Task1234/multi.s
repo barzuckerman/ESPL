@@ -1,19 +1,22 @@
 section .data
+    format_string: db "%s", 10, 0
+    x_struct: db 0                  ; Reserve space for struct multi
+    x_num: times 600 db 0           ; Reserve space for num array
     ;x_struct: 
         ;dw 5                              ; size (5 bytes in num array)
     ;x_num: 
         ;dw 0xaa, 1, 2, 0x44, 0x4f         ; num array in little-endian
-    format db "%02hhx", 0                 ; Format string for printf
+    format_hex db "%02hhx", 0                 ; Format string for printf
     newline db 0x0A, 0
-    hex_chars db "0123456789ABCDEF"  ; Hex digits for converting to hex characters
+    combine db 0
+    length dd 0
 section .bss
-    x_struct resb 2                       ; Reserve space for struct multi
-    x_num resb 600                          ; Reserve space for num array
-    input_buffer resb 600                  ; Reserve space for input buffer
+    input_buffer: resb 600
 section .text
 extern printf
 extern fgets
 extern stdin                    ; Declare stdin (C runtime variable)
+extern strlen
 global print_multi
 global getmulti          
 global main 
@@ -30,6 +33,11 @@ main:
     call getmulti                      ; Call print_multi
     add esp, 4                            ; Clean up stack (1 argument)
 
+        ; Call print_multi(&x_struct)
+    lea eax, [x_struct]            ; Load address of x_struct
+    push eax                              ; Push pointer to x_struct onto the stack
+    call print_multi                      ; Call print_multi
+    add esp, 4                            ; Clean up stack (1 argument)
     
     ; Exit main
     mov esp, ebp                          ; Restore stack pointer
@@ -39,100 +47,131 @@ main:
 
 ;-----------------Task 1A-----------------
 ; void print_multi(struct multi *p)
-print_multi:
-    push ebp                              ; Save base pointer
-    mov ebp, esp                          ; Set base pointer
+print_multi: 
+    push ebp
+    mov ebp, esp
     push esi                              ; Preserve esi
     push edi                              ; Preserve edi
-    push ebx                              ; Preserve ebx
+    push ebx 
 
-    ; Load struct multi *p
-    mov esi, [ebp + 8]                    ; esi = p (pointer to struct)
-    movzx ecx, word [esi]                 ; ecx = p->size (size is unsigned char)
-    lea edi, [esi + 2]                    ; edi = p->num (address of num array, skipping size byte)
+    mov esi, [ebp+8] ; pointer
+    mov bl, byte [esi] ; size
+    add esi, ebx ; little endian
 
-    ; Loop through the num array in reverse order
-    dec ecx                               ; ecx = p->size - 1 (last index)
 loop_print:
-    cmp ecx, -1                           ; Compare ecx with -1
-    je end_loop                           ; Exit loop if ecx == 0
+    cmp ebx, 0
+    jz end_loop
 
-    ; Print num[ecx]
-    movzx eax, word [edi + ecx*2]           ; Load num[ecx] into eax (zero-extended)
-    push ecx
-    push eax                              ; Push num[ecx] onto the stack
-    push format                           ; Push format string onto the stack
-    call printf                           ; Call printf("%02hhx")
-    add esp, 8                            ; Clean up stack (2 arguments)
-    pop ecx                               ; Restore ecx
-    dec ecx                               ; ecx--
-    jmp loop_print                      ; Repeat loop
+    mov ecx, esi
+    mov cl, [ecx]
 
-end_loop:
-    push newline                          ; Push newline string onto the stack
-    call printf                           ; Call printf("\n")
-    add esp, 4
+    push dword ecx
+    push dword format_hex
+    call printf
+    add esp, 8
 
-    pop ebx                               ; Restore ebx
-    pop edi                               ; Restore edi
-    pop esi                               ; Restore esi
-    mov esp, ebp                          ; Restore stack pointer
-    pop ebp                               ; Restore base pointer
-    ret                                   ; Return to caller
+    dec esi
+    dec ebx
+
+    jmp loop_print
+
 
 
 ;-----------------Task 1B-----------------
 ; void getmulti(struct multi *p)
 getmulti:
-    push ebp                              ; Save base pointer
-    mov ebp, esp                          ; Set base pointer
-    push esi                              ; Preserve esi
-    push edi                              ; Preserve edi
-    push ebx                              ; Preserve ebx
+    push ebp
+    mov ebp, esp
 
-    ; Load struct multi *p
-    lea esi, [x_struct]                   ; esi = &x_struct (pointer to struct)
-    lea edi, [input_buffer]                      ; edi = &x_num (address of num array)
+    ;loading into the buffer the input the user entered
+    push dword [stdin]
+    push 600
+    push dword input_buffer
+    call fgets
+    add esp, 12
+    ;calculating the size of the input
+    push input_buffer
+    call strlen
 
-    ; Read line from stdin
-    push dword [stdin]              ; Push the stdin pointer from C runtime
-    push 600                              ; Push size of buffer onto the stack
-    push input_buffer                              ; Push buffer pointer onto the stack
-    call fgets                            ; Call fgets(buffer, 600, stdin)
-    add esp, 12                            ; Clean up stack (2 arguments)
+    mov ebx, eax
+    mov ecx, 1
 
-    ; Calculate the length of input string (excluding newline and null terminator)
-    xor ecx, ecx                          ; Clear ECX (index for length calculation)
-calculate_length:
-    mov al, byte [edi + ecx]              ; Load character from buffer
-    cmp al, 0                             ; Check for null terminator
-    je finalize_length                    ; If null terminator, break
-    cmp al, 10                            ; Check for newline character
-    je replace_newline                    ; If newline, break
+    mov [length], eax
+    shr byte [length], 1
 
-    
+    mov eax, [length]
+    mov dword [x_struct], eax
 
-    inc ecx                               ; Increment index
-    jmp calculate_length                  ; Repeat for next character
+    mov esi, input_buffer ; buffer
+    mov edi, 0 ; counter
 
-replace_newline:
-    mov byte [edi + ecx], 0               ; Replace newline with null terminator
-finalize_length:
-    lea edi, [input_buffer]                      ; edi = &x_num (address of num array)
-    shr ecx, 1                            ; Divide length by 2 (hex pairs)
-    mov byte [esi], cl                    ; Store length in p->size (1 byte)
+;going throw the input and converting it to hex
+loop_get:
+    cmp edi, [length]
+    je end_loop
 
-    ; Call print_multi(p)
-    push esi                              ; Push pointer to p onto the stack
-    call print_multi                      ; Call print_multi(p)
-    add esp, 4                            ; Clean up stack (1 argument)
+    mov al, [esi]
+    call letter_low
+    inc esi
+    inc ecx
 
-    ; Epilogue
-    pop ebx                               ; Restore ebx
-    pop edi                               ; Restore edi
-    pop esi                               ; Restore esi
-    mov esp, ebp                          ; Restore stack pointer
-    pop ebp                               ; Restore base pointer
+    cmp ebx,ecx
+    je odd_Length
+
+    mov ah, [esi]
+    call letter_high
+    inc esi
+    inc ecx
+
+    shl al, 4
+    or al, ah
+
+    mov [combine], al
+    mov edx, [combine]
+    mov dword [x_num+edi], edx
+
+    inc edi
+    jmp loop_get
+
+odd_Length:
+    mov [combine], al
+    mov edx, [combine]
+    mov dword [x_num+edi], edx
+
+    jmp end_loop
+
+letter_low:
+    cmp al, 'a'
+    jl digit_low
+    sub al, 87 
+    ret 
+
+digit_low:
+    sub al, 48
+    ret
+
+letter_high:
+    cmp ah, 'a'
+    jl digit_high
+    sub ah, 87 
+    ret 
+
+digit_high:
+    sub ah, 48 
     ret
 
 
+end_loop:
+    push newline
+    push dword format_string
+    call printf
+    add esp, 8
+
+    mov esp, ebp
+    pop ebp
+    ret
+
+exit:
+    mov eax, 1
+    mov ebx, 0
+    int 0x80
