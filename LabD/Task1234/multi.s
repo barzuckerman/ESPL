@@ -362,7 +362,7 @@ add_multi:
     mov edi, ebx ; pointer to the struct with the smaller size
 
     movzx ecx, byte [esi] ; size of the larger struct
-    add ecx, 1          ; add for the carry
+    add ecx, 2          ; add for the carry
 
     push ecx
     call malloc
@@ -408,7 +408,7 @@ bigger_loop: ;also the carry
 
     mov dl, byte [esi+ebx] 
     add byte [new_struct+ebx], dl
-    adc byte [new_struct+ebx+1], 0
+    ;adc byte [new_struct+ebx+1], 0
 
     dec ebx
     jmp bigger_loop
