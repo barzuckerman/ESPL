@@ -1,32 +1,35 @@
 section .data
-    counter: dd 0                    ; Counter for loop
-    ; First test struct
-    a_struct: dw 5                   ; Length of the first struct
-    a_num: dw 0xAA, 0x01, 0x02, 0x44, 0x4F ; Array elements
-
-    ; Second test struct
-    y_struct: dw 6                   ; Length of the second struct
-    y_num: dw 0xAA, 0x01, 0x02, 0x03, 0x44, 0x4F ; Array elements
-
     format_string: db "%s", 10, 0
-    x_struct: db 0                  ; Reserve space for struct multi
-    x_num: times 600 db 0           ; Reserve space for num array
-    ;x_struct: 
-        ;dw 5                              ; size (5 bytes in num array)
-    ;x_num: 
-        ;dw 0xaa, 1, 2, 0x44, 0x4f         ; num array in little-endian
+    _struct: db 0                  ; Reserve space for struct multi
+    _num: times 600 db 0           ; Reserve space for num array
+
+    _struct2: db 0                  ; Reserve space for struct multi
+    _num2: times 600 db 0           ; Reserve space for num array
+
     format_hex db "%02hhx", 0                 ; Format string for printf
-    newline db 0x0A, 0
+    newline db 0xA, 0
     combine db 0
     length dd 0
 
+    ; First test struct
+    x_struct: db 5                   ; Length of the first struct
+    x_num: db 0xaa, 1, 2, 0x44, 0x4f ; Array elements
+
+    ; Second test struct
+    y_struct: db 6                   ; Length of the second struct
+    y_num: db 0xaa, 1, 2 , 3, 0x44, 0x4f ; Array elements
 
 
-    
+    calc_size_x: dd 0
+    calc_size_y: dd 0
+    new_struct:  db 0
+
+    STATE dw 0xACE1 ; Initial state for the LFSR
+    MASK dw 0x002D ; Mask for the LFSR
+
 section .bss
     input_buffer: resb 600
     ; Result struct
-    new_struct: resb 1
 section .text
 extern printf
 extern fgets
@@ -35,7 +38,9 @@ extern stdin                    ; Declare stdin (C runtime variable)
 global print_multi
 global getmulti
 global maxmin  
-global add_multi       
+global add_multi
+global rand_num
+global PRmulti       
 global main 
 
 ; Main function
@@ -47,11 +52,55 @@ main:
     ;call getmulti                      ; Call print_multi
     ;add esp, 4                            ; Clean up stack (1 argument)
 
-    ;lea eax, [x_struct]            ; Load address of x_struct
+    ;lea eax, [_struct]            ; Load address of x_struct
     ;push eax                              ; Push pointer to x_struct onto the stack
     ;call print_multi                      ; Call print_multi
     ;add esp, 4                            ; Clean up stack (1 argument)
 ;---------------------checking part 2---------------------
+    
+    ;push dword x_struct
+    ;call print_multi
+    ;add esp, 4
+
+    ;push dword y_struct
+    ;call print_multi
+    ;add esp, 4
+
+    ;push dword y_struct        ; Second struct
+    ;push dword x_struct        ; First struct
+    ;call add_multi             ; Perform addition
+    ;add esp, 8                 ; Clean up stack
+
+    ; Print result
+
+    ;push dword new_struct        ; First struct
+    ;call print_multi
+    ;add esp, 4
+;---------------------checking part 3A---------------------
+    ; call rand_num           ; Call the random number generator
+    ; push eax                ; Push the value to the stack
+    ; push dword format_hex   ; Push the format string
+    ; call printf             ; Print the random number
+    ; add esp, 8              ; Clean up the stack
+    
+    ; push newline
+    ; push dword format_string
+    ; call printf
+    ; add esp, 8
+
+;---------------------checking part 3B---------------------
+    ; Test PRmulti and print the resulting MPI
+    ; call PRmulti             ; Generate a pseudo-random MPI
+    ; push eax                 ; Pass the pointer to the struct to print_multi
+    ; call print_multi         ; Print the MPI
+    ; add esp, 4               ; Clean up the stack
+
+    mov ecx, [ebp+8] ; get argc
+    mov edx, [ebp+12] ; get argv
+    mov eax, [edx+4] ; get argv[1]
+    cmp ecx, 2
+    je args
+;---------------------By default---------------------
     push dword x_struct
     call print_multi
     add esp, 4
@@ -65,8 +114,69 @@ main:
     call add_multi             ; Perform addition
     add esp, 8                 ; Clean up stack
 
-    ; Print result
-    push eax                   ; The result struct pointer is in eax
+    ;Print result
+
+    push dword new_struct        ; First struct
+    call print_multi
+    add esp, 4
+    
+    ; Exit main
+    mov esp, ebp                          ; Restore stack pointer
+    pop ebp                               ; Restore base pointer
+    mov eax, 0                            ; Return 0
+    ret                                   ; Exit program
+
+
+args:     
+    cmp word[eax], "-I"
+    je I_flag
+    cmp word[eax], "-R"
+    je R_flag
+    ret
+
+;---------------------part 1B---------------------
+I_flag:
+    call getmulti                      ; Call print_multi
+    add esp, 4                            ; Clean up stack (1 argument)
+    
+    mov esi, _struct          ; Source address
+    mov edi, _struct2         ; Destination address
+    mov ecx, 600           ; Number of bytes to copy
+
+    cld                       ; Clear direction flag for forward copying
+    rep movsb                 ; Copy ECX bytes from [ESI] to [EDI]
+
+    lea eax, [_struct2]            ; Load address of x_struct
+    push eax                              ; Push pointer to x_struct onto the stack
+    call print_multi                      ; Call print_multi
+
+    ; Clear the _struct by setting all bytes to 0 (or another sentinel value if needed)
+    lea edi, [_struct]     ; Load address of _struct into edi
+    mov ecx, 600           ; Set the length of the struct (in bytes)
+    xor eax, eax           ; Set eax to 0 (value to fill with)
+    rep stosb              ; Fill _struct with 0 bytes
+
+    lea edi, [input_buffer]     ; Load address of _struct into edi
+    mov ecx, 600           ; Set the length of the struct (in bytes)
+    xor eax, eax           ; Set eax to 0 (value to fill with)
+    rep stosb              ; Fill _struct with 0 bytes
+
+    call getmulti                      ; Call print_multi
+    add esp, 4                            ; Clean up stack (1 argument)
+
+    lea eax, [_struct]            ; Load address of x_struct
+    push eax                              ; Push pointer to x_struct onto the stack
+    call print_multi                      ; Call print_multi
+    add esp, 4                            ; Clean up stack (1 argument)
+
+    push dword _struct2        ; Second struct
+    push dword _struct        ; First struct
+    call add_multi             ; Perform addition
+    add esp, 8                 ; Clean up stack
+
+    ;Print result
+
+    push dword new_struct        
     call print_multi
     add esp, 4
 
@@ -74,7 +184,13 @@ main:
     mov esp, ebp                          ; Restore stack pointer
     pop ebp                               ; Restore base pointer
     mov eax, 0                            ; Return 0
-    ret                                   ; Exit program
+    ret
+;---------------------part 3---------------------
+R_flag:
+    call PRmulti
+    call print_multi
+    add esp, 12
+    ret
 
 ;-----------------Task 1A-----------------
 ; void print_multi(struct multi *p)
@@ -86,6 +202,7 @@ print_multi:
     push ebx 
 
     mov esi, [ebp+8] ; pointer
+    mov ebx, 0
     mov bl, byte [esi] ; size
     add esi, ebx ; little endian
 
@@ -140,7 +257,7 @@ length_calculated:
     shr byte [length], 1 ;dividing by 2 inorder to get pairs
 
     mov eax, [length]
-    mov dword [x_struct], eax
+    mov dword [_struct], eax
 
     mov esi, input_buffer ; esi holds the array
     mov edi, 0 ; counter
@@ -170,7 +287,7 @@ loop_get:
 
     mov [combine], al
     mov edx, [combine]
-    mov dword [x_num+edi], edx
+    mov dword [_num+edi], edx
 
     inc edi
     jmp loop_get
@@ -178,7 +295,7 @@ loop_get:
 odd_Length:
     mov [combine], al
     mov edx, [combine]
-    mov dword [x_num+edi], edx
+    mov dword [_num+edi], edx
 
     jmp end_loop
 
@@ -201,6 +318,7 @@ digit_low:
 digit_high:
     sub ah, 48 
     ret
+
 ;-----------------Task 2A-----------------
 
 ; inputs:
@@ -210,18 +328,21 @@ digit_high:
 ;   eax - pointer to the struct with the larger size
 ;   ebx - pointer to the struct with the smaller size
 maxmin:
-    push ebp
-    mov ebp, esp
+    movzx edx, byte [ebx]  
+    mov dword [calc_size_y], edx   
 
-    movzx ecx, byte [eax]  ; ecx = size field of first struct
-    movzx edx, byte [ebx]  ; edx = size field of second struct
-    cmp ecx, edx           
-    jge done               ; if first >= second no need to swap
+    movzx ecx, byte [eax]   
+    mov dword [calc_size_x], ecx  
 
-    xchg eax, ebx          ; Swap eax and ebx
-done:
-    mov esp, ebp
-    pop ebp
+    mov edi, [calc_size_y]
+    mov esi, [calc_size_x]
+
+    cmp esi, edi
+    jge bigger
+    mov ecx, eax
+    mov eax, ebx
+    mov ebx, ecx
+bigger:
     ret
 
 ;-----------------Task 2B-----------------
@@ -235,69 +356,130 @@ add_multi:
     mov eax, [ebp + 8]      
     mov ebx, [ebp + 12]     
 
-    ; Determine max and min structs
+    ; determine max and min structs
     call maxmin
-    add esp, 8              ; Clean up stack
+    mov esi, eax ;pointer to the struct with the larger size
+    mov edi, ebx ; pointer to the struct with the smaller size
 
-    mov ecx, 0
-    mov cl, byte [eax]       ; Load the size of the max struct
-    add ecx, 2               ; Increase size for carry
-    pushad
+    movzx ecx, byte [esi] ; size of the larger struct
+    add ecx, 1          ; add for the carry
+
     push ecx
-    call malloc              ; Allocate memory for the new struct
+    call malloc
     add esp, 4
-    mov dword [new_struct], eax
+
+    mov [new_struct], eax ; pointer to the new struct
+    inc byte [esi] 
+    movzx ecx, byte [esi]
+    dec byte [esi]
+    mov byte [new_struct], cl
+
+    movzx ebx, byte [esi]
+    inc ebx
+
+after_malloc:
+; Perform the memory modification or other operations first
+    mov byte [new_struct+ebx], 0   ; Modify the byte at [new_struct + ebx]
+    dec ebx                        ; Decrement ebx
+    jnz after_malloc               ; Jump to after_malloc if ebx is not zero
+    cmp ebx, 0                     ; Now compare ebx with zero (after operations)
+    jz small              ; If ebx is zero, jump to pre_first_loop
+
+small:
+    movzx ebx, byte [edi] ; size of the smaller struct
+
+smaller_loop:
+    cmp ebx, 0
+    jz big
+
+    mov dl, byte [edi+ebx] 
+    add byte [new_struct+ebx], dl 
+
+    dec ebx
+    jmp smaller_loop
+
+big:
+    movzx ebx, byte [esi] ; size of the larger struct
+    clc
+
+bigger_loop: ;also the carry
+    cmp ebx, 0
+    jz end
+
+    mov dl, byte [esi+ebx] 
+    add byte [new_struct+ebx], dl
+    adc byte [new_struct+ebx+1], 0
+
+    dec ebx
+    jmp bigger_loop
+
+;-----------------Task 3-----------------
+rand_num:
+push ebp
+    mov ebp, esp
+    pushad
+
+    movzx eax, word[STATE]
+    and ax, [MASK]
+    mov bx, 0
+
+    calculate_parity:
+        mov cx, ax
+        and cx, 01
+        xor bx, cx
+        shr ax, 1
+        jne calculate_parity
+
+    shr word[STATE], 1
+    shl bx, 15
+    or [STATE], bx
+
     popad
-
-    mov edi, dword [new_struct]
-    dec ecx
-    mov byte [edi], cl       ; Store the size in the new struct
-    mov dword [counter], 0
-    mov ecx, 0
-
-ebx_looper:
-    shr ecx, 8
-    mov edx, 0
-    mov esi, dword [counter]
-    mov dl, byte [eax + esi + 1]   ; Load a byte from max struct
-    add ecx, edx
-    mov dl, byte [ebx + esi + 1]   ; Load a byte from min struct
-    add ecx, edx
-    mov byte [edi + esi + 1], cl   ; Store the result in the new struct
-    inc dword [counter]
-    mov dl, byte [counter]
-    cmp dl, byte [eax]
-    jne ebx_looper
-    cmp dl, byte [eax]
-    je end_add
-
-eax_looper:
-    shr ecx, 8
-    mov edx, 0
-    mov esi, dword [counter]
-    mov dl, byte [eax + esi + 1]   ; Load a byte from max struct
-    add ecx, edx
-    mov byte [edi + esi + 1], cl   ; Store the result in the new struct
-    inc dword [counter]
-    mov dl, byte [counter]
-    mov dl, byte [eax]
-    jne eax_looper
-
-end_add:
-    shr ecx, 8
-    mov byte [edi + esi + 2], cl   ; Handle the carry
-    popad
-    mov esp, ebp
     pop ebp
-    mov eax, dword [new_struct]
-    ret    
+    movzx eax, word [STATE]
+    ret
+
+PRmulti:
+    push ebp
+    mov ebp, esp
+    pushad
     
+    continue_if_zero:
+        call rand_num
+        cmp al, 0
+        je continue_if_zero
+
+    movzx ecx, al
+    add ecx, 1
+    push ecx
+    call malloc
+    pop ecx
+    dec ecx
+    mov byte[eax], cl
+    mov dword[new_struct], eax
+    mov esi, eax
+    mov edi, 0
+
+    loop_rnd:
+        call rand_num
+        mov byte[esi + edi + 1], al
+        inc edi
+        dec ecx
+        cmp ecx, 0
+        jne loop_rnd
+
+    popad
+    pop ebp
+    mov eax, [new_struct]
+    ret
+
+
 end_loop:
     push newline
     push dword format_string
     call printf
     add esp, 8
-
+end:
     mov esp, ebp
     pop ebp
     ret
