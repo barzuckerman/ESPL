@@ -13,7 +13,7 @@ section .data
 
     ; First test struct
     x_struct: db 5                   ; Length of the first struct
-    x_num: db 0xaa, 1, 2, 0x44, 0x4f ; Array elements
+    x_num: db 0x00aa, 1,2,0x0044,0x004f ; Array elements
 
     ; Second test struct
     y_struct: db 6                   ; Length of the second struct
@@ -29,6 +29,8 @@ section .data
 
 section .bss
     input_buffer: resb 600
+    pointer: resd 1
+
     ; Result struct
 section .text
 extern printf
@@ -112,11 +114,12 @@ main:
     push dword y_struct        ; Second struct
     push dword x_struct        ; First struct
     call add_multi             ; Perform addition
-    add esp, 8                 ; Clean up stack
+    ;add esp, 8                 ; Clean up stack
 
     ;Print result
 
-    push dword new_struct        ; First struct
+    ;push dword new_struct
+    push eax
     call print_multi
     add esp, 4
     
@@ -349,69 +352,129 @@ bigger:
 add_multi:
     push ebp
     mov ebp, esp
-    push esi
-    push edi
-    push ebx
+    pushad
 
-    mov eax, [ebp + 8]      
-    mov ebx, [ebp + 12]     
-
-    ; determine max and min structs
+    mov eax, [ebp + 8]
+    mov ebx, [ebp + 12]
     call maxmin
-    mov esi, eax ;pointer to the struct with the larger size
-    mov edi, ebx ; pointer to the struct with the smaller size
 
-    movzx ecx, byte [esi] ; size of the larger struct
-    add ecx, 2          ; add for the carry
+    mov esi, eax
+    mov edi, ebx
 
-    push ecx
+    movzx eax, byte[esi]            ;we save in eax the size of the bigger number
+    add eax, 2
+    push eax
     call malloc
-    add esp, 4
-
-    mov [new_struct], eax ; pointer to the new struct
-    inc byte [esi] 
-    movzx ecx, byte [esi]
-    dec byte [esi]
-    mov byte [new_struct], cl
-
-    movzx ebx, byte [esi]
-    inc ebx
-
-after_malloc:
-; Perform the memory modification or other operations first
-    mov byte [new_struct+ebx], 0   ; Modify the byte at [new_struct + ebx]
-    dec ebx                        ; Decrement ebx
-    jnz after_malloc               ; Jump to after_malloc if ebx is not zero
-    cmp ebx, 0                     ; Now compare ebx with zero (after operations)
-    jz small              ; If ebx is zero, jump to pre_first_loop
-
-small:
-    movzx ebx, byte [edi] ; size of the smaller struct
-
-smaller_loop:
-    cmp ebx, 0
-    jz big
-
-    mov dl, byte [edi+ebx] 
-    add byte [new_struct+ebx], dl 
-
+    pop ebx
     dec ebx
-    jmp smaller_loop
+    mov dword[pointer], eax
+    mov byte[eax], bl
+    inc eax
+    mov ecx, 0          ;ecx is used to store the carry (for add_multi)
+    mov edx, 0          ;edx is used to store the counter
+    
+loop_multi:
+    movzx ebx, byte[esi + 1 + edx]
+    add ebx, ecx
+    movzx ecx, byte[edi + 1 + edx]
+    add ebx, ecx
+    mov cl, bh
+    mov byte[eax], bl
+    inc eax
+    inc edx
+    cmp byte[edi], dl
+    jne loop_multi
+    
+    cmp byte[esi], dl
+    je handle_carry
 
-big:
-    movzx ebx, byte [esi] ; size of the larger struct
-    clc
 
-bigger_loop: ;also the carry
-    cmp ebx, 0
-    jz end
+handle_longer_number_rest:
+    ; add the remaining bytes of the longer number to the result
+    movzx ebx, byte[esi + 1 + edx]
+    add ebx, ecx
+    mov cl, bh
+    mov byte[eax], bl
+    inc eax
+    inc edx
+    cmp byte[esi], dl
+    jne handle_longer_number_rest
 
-    mov dl, byte [esi+ebx] 
-    add byte [new_struct+ebx], dl
-    ;adc byte [new_struct+ebx+1], 0
+handle_carry:
+    ; store the remaining carry
+    mov byte[eax], cl
 
-    dec ebx
-    jmp bigger_loop
+    popad
+    pop ebp
+    mov eax, dword[pointer]
+    ret
+    ;-----------------------------------
+;     push ebp
+;     mov ebp, esp
+;     push esi
+;     push edi
+;     push ebx
+
+;     mov eax, [ebp + 8]      
+;     mov ebx, [ebp + 12]     
+
+;     ; determine max and min structs
+;     call maxmin
+;     mov esi, eax ;pointer to the struct with the larger size
+;     mov edi, ebx ; pointer to the struct with the smaller size
+
+;     movzx ecx, byte [esi] ; size of the larger struct
+;     add ecx, 1          ; add for the carry
+
+;     push ecx
+;     call malloc
+;     add esp, 4
+
+;     mov [new_struct], eax ; pointer to the new struct
+;     inc byte [esi] 
+;     movzx ecx, byte [esi]
+;     dec byte [esi]
+;     mov byte [new_struct], cl
+
+;     movzx ebx, byte [esi]
+;     inc ebx
+
+; after_malloc:
+; ; Perform the memory modification or other operations first
+;     mov byte [new_struct+ebx], 0   ; Modify the byte at [new_struct + ebx]
+;     dec ebx                        ; Decrement ebx
+;     jnz after_malloc               ; Jump to after_malloc if ebx is not zero
+;     cmp ebx, 0                     ; Now compare ebx with zero (after operations)
+;     jz small              ; If ebx is zero, jump to pre_first_loop
+
+; small:
+;     movzx ebx, byte [edi] ; size of the smaller struct
+
+; smaller_loop:
+;     cmp ebx, 0
+;     jz big
+
+;     mov dl, byte [edi+ebx] 
+;     add byte [new_struct+ebx], dl 
+
+;     dec ebx
+;     jmp smaller_loop
+
+; big:
+;     movzx ebx, byte [esi] ; size of the larger struct
+;     clc
+
+; bigger_loop: ;also the carry
+;     cmp ebx, 0
+;     jz end
+
+;     mov dl, byte [esi+ebx] 
+;     add byte [new_struct+ebx], dl
+;     adc byte [new_struct+ebx+1], 0
+
+;     dec ebx
+;     jmp bigger_loop
+
 
 ;-----------------Task 3-----------------
 rand_num:
