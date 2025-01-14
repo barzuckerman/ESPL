@@ -25,12 +25,10 @@ section .data
     new_struct:  db 0
 
     state: dw 0xACE1
-    mask:  dw 0xB400
-    FORMAT: db "%x", 0
+    mask:  dw 0x002D
 
 section .bss
     input_buffer: resb 600
-    pointer: resd 1
 
     ; Result struct
 section .text
@@ -38,65 +36,19 @@ extern printf
 extern fgets
 extern malloc
 extern stdin                    ; Declare stdin (C runtime variable)
+extern memcpy
 global print_multi
 global getmulti
 global maxmin  
 global add_multi
 global rand_num
-global PR_multi       
+global PRmulti       
 global main 
 
 ; Main function
 main:
-    ; Prologue
     push ebp                              ; Save base pointer
     mov ebp, esp                          ; Set base pointer
-;---------------------checking part 1---------------------
-    ;call getmulti                      ; Call print_multi
-    ;add esp, 4                            ; Clean up stack (1 argument)
-
-    ;lea eax, [_struct]            ; Load address of x_struct
-    ;push eax                              ; Push pointer to x_struct onto the stack
-    ;call print_multi                      ; Call print_multi
-    ;add esp, 4                            ; Clean up stack (1 argument)
-;---------------------checking part 2---------------------
-    
-    ;push dword x_struct
-    ;call print_multi
-    ;add esp, 4
-
-    ;push dword y_struct
-    ;call print_multi
-    ;add esp, 4
-
-    ;push dword y_struct        ; Second struct
-    ;push dword x_struct        ; First struct
-    ;call add_multi             ; Perform addition
-    ;add esp, 8                 ; Clean up stack
-
-    ; Print result
-
-    ;push dword new_struct        ; First struct
-    ;call print_multi
-    ;add esp, 4
-;---------------------checking part 3A---------------------
-    ; call rand_num           ; Call the random number generator
-    ; push eax                ; Push the value to the stack
-    ; push dword format_hex   ; Push the format string
-    ; call printf             ; Print the random number
-    ; add esp, 8              ; Clean up the stack
-    
-    ; push newline
-    ; push dword format_string
-    ; call printf
-    ; add esp, 8
-
-;---------------------checking part 3B---------------------
-    ; Test PRmulti and print the resulting MPI
-    ; call PRmulti             ; Generate a pseudo-random MPI
-    ; push eax                 ; Pass the pointer to the struct to print_multi
-    ; call print_multi         ; Print the MPI
-    ; add esp, 4               ; Clean up the stack
 
     mov ecx, [ebp+8] ; get argc
     mov edx, [ebp+12] ; get argv
@@ -115,12 +67,10 @@ main:
     push dword y_struct        ; Second struct
     push dword x_struct        ; First struct
     call add_multi             ; Perform addition
-    ;add esp, 8                 ; Clean up stack
 
     ;Print result
 
-    push dword new_struct
-    ;push eax
+    push eax
     call print_multi
     add esp, 4
     
@@ -179,8 +129,7 @@ I_flag:
     add esp, 8                 ; Clean up stack
 
     ;Print result
-
-    push dword new_struct        
+    push eax
     call print_multi
     add esp, 4
 
@@ -192,7 +141,9 @@ I_flag:
 ;---------------------part 3---------------------
 R_flag:
     
-    call PR_multi
+    call PRmulti
+    push eax
+    call print_multi
     mov esp, ebp
     pop ebp
     ret
@@ -210,6 +161,16 @@ print_multi:
     mov ebx, 0
     mov bl, byte [esi] ; size
     add esi, ebx ; little endian
+
+remove_leading_zeros:
+    cmp ebx, 0         ; Check if size is 0
+    jz end_loop        ; If size is 0, exit the function
+    mov al, byte [esi] ; Load the current byte
+    cmp al, 0          ; Check if the byte is 0
+    jne loop_print     ; If not 0, start printing
+    dec esi            ; Move to the previous byte
+    dec ebx            ; Decrease the size
+    jmp remove_leading_zeros
 
 loop_print:
     cmp ebx, 0
@@ -352,129 +313,152 @@ bigger:
 
 ;-----------------Task 2B-----------------
 add_multi:
+    push ebp             
+    mov ebp, esp       
 
-    push ebp
-    mov ebp, esp
-    push esi
-    push edi
-    push ebx
+    ; Load the two input arguments
+    mov eax, [ebp + 8]     ; First input pointer
+    mov ebx, [ebp + 12]    ; Second input pointer
 
-    mov eax, [ebp + 8]      
-    mov ebx, [ebp + 12]     
-
-    ; determine max and min structs
+    ; Determine the maximum size of the two arrays
     call maxmin
-    mov esi, eax ;pointer to the struct with the larger size
-    mov edi, ebx ; pointer to the struct with the smaller size
+    mov edi, eax           ; Pointer to the larger array
+    movzx edx, byte [edi]    ; Get the size of the larger array
 
-    movzx ecx, byte [esi] ; size of the larger struct
-    add ecx, 1          ; add for the carry
-
-    push ecx
+    ; Allocate memory for the result
+    add edx, 2             ; Size of result = max size + 2
+    push edx
     call malloc
-    add esp, 4
+    mov esi, eax           ; Result pointer
 
-    mov [new_struct], eax ; pointer to the new struct
-    inc byte [esi] 
-    movzx ecx, byte [esi]
-    dec byte [esi]
-    mov byte [new_struct], cl
+    ; Initialize the result with the larger array
+    movzx edx, byte [edi]
+    mov [esi], byte dl     ; Set size of the result
+    mov [esi + edx], byte 0x0 ; Null-terminate for safety
 
-    movzx ebx, byte [esi]
-    inc ebx
+    ; Adjust pointers for copying
+    add esi, 1
+    add edi, 1
 
-after_malloc:
-; Perform the memory modification or other operations first
-    mov byte [new_struct+ebx], 0   ; Modify the byte at [new_struct + ebx]
-    dec ebx                        ; Decrement ebx
-    jnz after_malloc               ; Jump to after_malloc if ebx is not zero
-    cmp ebx, 0                     ; Now compare ebx with zero (after operations)
-    jz small              ; If ebx is zero, jump to pre_first_loop
+    ; Copy the larger array into the result buffer
+    push edx
+    push edi
+    push esi
+    call memcpy
 
-small:
-    movzx ebx, byte [edi] ; size of the smaller struct
+    ; Prepare for addition
+    mov edi, ebx           ; Pointer to the smaller array
+    add edi, 1             ; Move past the size byte
 
-smaller_loop:
-    cmp ebx, 0
-    jz big
+    mov ecx, 0             ; Counter = 0
+    movzx ebx, byte [edi-1]  ; Length of the smaller array
+    movzx edx, byte [esi-1]  ; Length of the result buffer
 
-    mov dl, byte [edi+ebx] 
-    add byte [new_struct+ebx], dl 
+process_digits:
+    cmp ecx, ebx           ; Check if we've processed all digits
+    jz finalize_result    ; If yes, finalize the result
 
-    dec ebx
-    jmp smaller_loop
-
-big:
-    movzx ebx, byte [esi] ; size of the larger struct
+    ; Perform digit addition with carry
     clc
+    mov eax, 0
+    mov byte al, byte [edi + ecx]  ; Load digit from smaller array
+    adc byte al, byte [esi + ecx]  ; Add digit from result (with carry)
+    mov byte [esi + ecx], byte al  ; Store back the result
 
-bigger_loop: ;also the carry
-    cmp ebx, 0
-    jz end
+    ; Handle carry propagation
+    mov eax, ecx           
+    jc propagate_carry
 
-    mov dl, byte [esi+ebx] 
-    add byte [new_struct+ebx], dl
-    adc byte [new_struct+ebx+1], 0
+continue_addition:        
+    add ecx, 1
+    jnc process_digits     ; Continue if no overflow
 
-    dec ebx
-    jmp bigger_loop
+propagate_carry:               
+    add eax, 1
+    clc
+    adc byte [esi + eax], byte 0x1 ; Propagate carry
+    jnc continue_addition
 
+    jmp propagate_carry    ; Repeat until carry is resolved
 
-;-----------------Task 3-----------------
-PR_multi:
-    push dword [state]
-    push FORMAT
-    call printf 
-    add esp, 8
+finalize_result:
+    sub esi, 1             ; Adjust result pointer back
 
-    mov esi, 20   
+    ; Update the result size
+    movzx edx, byte [esi]    
+    add edx, 1             ; Increment size by 1
+    mov [esi], byte dl     
 
-loop_rand_num:
-    push esi 
-    call rand_num
-
-    push eax
-    push FORMAT
-    call printf
-    add esp, 8
-
-    pop esi
-    sub esi, 1
-
-    jz done_loop_rand_num
-    jmp loop_rand_num
-
-done_loop_rand_num:
-    mov esp, ebp
-    pop ebp
-    ret 
-
-rand_num:
-    push ebp
-    mov ebp, esp
-
-    ; Load the current state
-    mov ax, [state]
-    mov bx, [mask]
-
-    ; Random number logic
-    xor bx, ax            ; XOR state with mask
-    jp parity             ; Jump if parity is even (Parity Flag = 1)
-
-    stc                   ; Set carry flag
-    rcr ax, 1             ; Rotate right through carry
-    jmp done_rand_num     ; Jump to the end
-
-parity:
-    shr ax, 1             ; Shift right
-
-done_rand_num:
-    mov [state], ax       ; Update state with new value
-    mov eax, [state]      ; Return the new state in EAX
-
+    ; Return the result pointer
+    mov eax, esi
     mov esp, ebp
     pop ebp
     ret
+
+;-----------------Task 3-----------------
+rand_num:
+; generates a pseudo-random number based on a given state and mask
+    push ebp             
+    mov ebp, esp  
+
+    mov ax, [state]     ;load the current state into the ax register
+    mov bx, [mask]      ;load the mask into the bx register
+
+    and ax, bx        ;state & mask
+    add ax, 1
+    xor ax, 0   ;perform a bitwise XOR with 0 (no effect, but sets flags).
+    jpo     odd
+
+    ;even parity Handling
+    mov bx, 0
+    jmp count
+
+odd:
+    mov bx, 1   ;odd Parity Handling
+
+count:
+    mov ax, [state]
+    shr ax, 1 
+    shl bx, 15     
+    or ax, bx     
+
+    mov word [state] ,ax ;store the new state back into the state variable.
+    movzx eax, ax
+    mov esp, ebp
+    pop ebp
+    ret
+PRmulti:
+    push ebp
+    mov ebp, esp
+    sub esp, 8                      
+    call rand_num
+    and eax, 0x000000FF             
+    mov ecx, eax                    
+    push ecx
+    push eax
+    call malloc                    
+    add esp, 4
+    pop ecx
+    mov edi, eax                    
+    mov edx, 0                      
+    mov [edi + edx], cl
+loop_PRmulti:
+    push ecx
+    call rand_num
+    pop ecx
+    inc edx          
+    mov [edx+edi], al              
+    cmp edx, ecx                    
+    jl loop_PRmulti                  
+    mov eax, edi
+    pop ebx
+    mov esp, ebp
+    pop ebp
+    ret
+
+
+
+;-----------------------------------
 end_loop:
     push newline
     push dword format_string
