@@ -430,31 +430,39 @@ count:
 PRmulti:
     push ebp
     mov ebp, esp
-    sub esp, 8                      
+    sub esp, 8                      ; Allocate 8 bytes of local stack space (if needed, unused here)
+
+    ; Generate a random number to determine the size of the memory block
     call rand_num
-    and eax, 0x000000FF             
-    mov ecx, eax                    
-    push ecx
-    push eax
-    call malloc                    
-    add esp, 4
-    pop ecx
-    mov edi, eax                    
-    mov edx, 0                      
-    mov [edi + edx], cl
+    and eax, 0x000000FF             ; Mask the random number to ensure it fits within 1 byte (0-255)
+    mov ecx, eax                    ; Store the size in ECX
+    push ecx                        ; Save the size on the stack for later
+    push eax                        ; Push the size as an argument for malloc
+    call malloc                     ; Allocate memory of size 'eax'
+    add esp, 4                      ; Clean up the stack (remove the malloc argument)
+    pop ecx                         ; Restore the size into ECX
+    mov edi, eax                    ; Store the pointer to the allocated memory in EDI
+    mov edx, 0                      ; Initialize the index/counter (EDX) to 0
+
+    ; Store the size of the array at the start of the allocated memory
+    mov [edi + edx], cl             ; Store the size (CL) at the first byte of the allocated memory
+
 loop_PRmulti:
-    push ecx
-    call rand_num
-    pop ecx
-    inc edx          
-    mov [edx+edi], al              
-    cmp edx, ecx                    
-    jl loop_PRmulti                  
-    mov eax, edi
-    pop ebx
-    mov esp, ebp
-    pop ebp
-    ret
+    push ecx                        ; Save the size (ECX) on the stack
+    call rand_num                   ; Generate a new random number
+    pop ecx                         ; Restore the size (ECX)
+    inc edx                         ; Increment the index/counter
+    mov [edx + edi], al             ; Store the random byte (AL) at the current position in the array
+    cmp edx, ecx                    ; Compare the index with the size
+    jl loop_PRmulti                 ; If index < size, repeat the loop
+
+    ; Prepare to return the pointer to the allocated memory
+    mov eax, edi                    ; Set the return value (pointer to the allocated memory)
+
+    pop ebx                         ; Restore EBX (if it was saved earlier)
+    mov esp, ebp                    ; Restore the stack pointer
+    pop ebp                         ; Restore the base pointer
+    ret                             ; Return to the caller
 
 
 
