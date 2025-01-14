@@ -12,6 +12,7 @@ void print_mmap_prot_flags(Elf32_Phdr *phdr, int arg);
 Elf32_Word checkMappingFlags(Elf32_Word flag);
 int checkProtectionFlags(Elf32_Word flag);
 void load_phdr(Elf32_Phdr *phdr, int fd);
+int startup(int argc, char **argv, void (*start)());
 
 
 int foreach_phdr(void *map_start, void (*func)(Elf32_Phdr *,int), int arg){
@@ -123,20 +124,11 @@ void load_phdr(Elf32_Phdr *phdr, int fd){
         return;  // Only process LOAD segments
     }
 
-    // check prot
-    int protFlags = 0;
-    if (phdr->p_flags & PF_R)
-        protFlags |= PROT_READ;
-    if (phdr->p_flags & PF_W)
-        protFlags |= PROT_WRITE;
-    if (phdr->p_flags & PF_X)
-        protFlags |= PROT_EXEC;
-
     void* vaddr = (void*)(phdr->p_vaddr & 0xfffff000);
     int offset = phdr->p_offset & 0xfffff000;
     int padding = phdr->p_vaddr & 0xfff;
     size_t memszTotal = phdr->p_memsz + padding;
-    void* elfFileMaped = mmap(vaddr, phdr->p_memsz, protFlags, MAP_FIXED | MAP_PRIVATE, fd, offset); 
+    void* elfFileMaped = mmap(vaddr, memszTotal, checkProtectionFlags(phdr->p_flags), MAP_PRIVATE | MAP_FIXED , fd, offset); 
     if(elfFileMaped == MAP_FAILED){
         perror("Error");
         return;
@@ -169,6 +161,13 @@ int main(int argc, char *argv[]) {
     void *map_start = mmap(NULL, filesize, PROT_READ | PROT_EXEC | PROT_WRITE, MAP_PRIVATE, fileno(file), 0);
     printf("Type     Offset   VirtAddr   PhysAddr   FileSiz  MemSiz   Flg    Align   ProtFlag mapFlag\n");
     foreach_phdr(map_start, load_phdr, fileno(file));
+
+    // Get the ELF header to find the entry point
+    Elf32_Ehdr *elf_header = (Elf32_Ehdr *)map_start;
+
+    startup(argc-1, argv+1, (void *)(elf_header->e_entry));
+
+
     fclose(file);
     return 0;
 
