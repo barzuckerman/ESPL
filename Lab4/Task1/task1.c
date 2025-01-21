@@ -42,7 +42,7 @@ static char* dec_formats[] = {"%#hhd\n", "%#hd\n", "No such unit", "%#d\n"};
 int main(int argc, char **argv)
 {
     char input[MAX_LEN];
-    FunDesc arr[] = {{"Toggle Debug Mode", ToggleDebugMode}, {"Set File Name", setFileName},{"Set Unit Size", setUnitSize} ,{"Load Into Memory", loadIntoMemory},{"Toggle Display Mode", toggleDisplayMode},{"File Display", fileDisplay},{"Memory Display", memoryDisplay}, {"Save Into File", saveIntoFile}, {"Memory Modify", memoryModify}, {"Quit", quit}, {NULL, NULL}};
+    FunDesc arr[] = {{"Toggle Debug Mode", ToggleDebugMode}, {"Examine ELF File", setFileName},{"Print Section Names", setUnitSize} ,{"Load Into Memory", loadIntoMemory},{"Toggle Display Mode", toggleDisplayMode},{"File Display", fileDisplay},{"Memory Display", memoryDisplay}, {"Save Into File", saveIntoFile}, {"Memory Modify", memoryModify}, {"Quit", quit}, {NULL, NULL}};
     int bound = sizeof(arr) / sizeof(arr[0]) ;
     state* s = NULL;
     s = malloc(sizeof(state));
