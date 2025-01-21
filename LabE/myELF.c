@@ -316,6 +316,10 @@ void scanSymbols(ELF_File *file1, ELF_File *file2){
 
     Elf32_Shdr *symtab1 = getSymbolTable(header1, sectionHeaders1);
     Elf32_Shdr *symtab2 = getSymbolTable(header2, sectionHeaders2);
+
+    char *symStringTab1 = (char*)(file1->map_start + (sectionHeaders1 + symtab1->sh_link)->sh_offset);
+    char *symStringTab2 = (char*)(file2->map_start + (sectionHeaders2 + symtab2->sh_link)->sh_offset);
+
     // Check symbols in SYMTAB1 against SYMTAB2
     Elf32_Sym *symbols1 = (Elf32_Sym *)(file1->map_start + symtab1->sh_offset);
     Elf32_Sym *symbols2 = (Elf32_Sym *)(file2->map_start + symtab2->sh_offset);
@@ -325,8 +329,8 @@ void scanSymbols(ELF_File *file1, ELF_File *file2){
     // Create a list or set to store names in the second symbol table for quick lookups
     for (size_t i = 1; i < numSymbols1; i++) { // Start from 1 to skip the dummy null symbol
         Elf32_Sym *sym1 = (Elf32_Sym*)(symbols1 + i);
-        char *symbolName1 = (char*)(symtab1 + sym1->st_name);
-        if(strcmp((symbolName1), "") != 0){
+        char *symbolName1 = (char*)(symStringTab1 + sym1->st_name);
+        if(strcmp(symbolName1, "") != 0){
             // Search for the symbol in the second symbol table
 
             int foundInFile2 = 0;
@@ -334,7 +338,7 @@ void scanSymbols(ELF_File *file1, ELF_File *file2){
             char *symbolName2;
             for (size_t j = 1; j < numSymbols2; j++) { // Start from 1 to skip the dummy null symbol
                 sym2 = (Elf32_Sym*)(symbols2 + j);
-                symbolName2 = (char*)(symtab2 + sym2->st_name);
+                symbolName2 = (char*)(symStringTab2 + sym2->st_name);
 
                 if (strcmp(symbolName1, symbolName2) == 0) {
                     foundInFile2 = 1; // Symbol found in file2
